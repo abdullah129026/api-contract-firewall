@@ -1,0 +1,1 @@
+{"dependencies":{"fastify":"^5.6.2"},"description":"Demo origin API for api-contract-firewall (local/dev only)","engines":{"node":">=18"},"license":"MIT","name":"acf-demo-origin","private":true,"scripts":{"break":"node scripts/flip-id.js --break","restore":"node scripts/flip-id.js --restore","start":"node server.js"},"version":"0.1.0"}
