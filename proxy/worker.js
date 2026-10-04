@@ -2,14 +2,21 @@
 //
 // Devs point their API base URL at this Worker with an `x-api-key` header.
 // The Worker validates the key, forwards the request to the registered
-// origin, and returns the origin's response untouched (capture ships async
-// in the next milestone via waitUntil — never blocking the hot path).
+// origin, and returns the origin's response untouched.
+//
+// Capture ships async in ctx.waitUntil() AFTER the response is returned:
+// method + templated path + status + timings + masked JSON body shape go to
+// INGEST_URL (a Next.js API route writing to Postgres). Capture never
+// blocks and never fails the proxied request — failures are counted in
+// the dropped-sample counter.
 //
 // Registry (milestone 1): `SERVICES_JSON` env var —
 //   {"<api-key>": {"origin": "http://api.internal:3000", "name": "billing"}}
 // Milestone 2 swaps this lookup for a cached Supabase REST query.
 
 'use strict';
+
+import { buildSample, createSampler, shouldSample, templatePath } from './capture.js';
 
 const KEY_CACHE_TTL_MS = 60_000; // cache validated keys for 60s (per plan)
 const keyCache = new Map(); // apiKey -> { origin, name, expiresAt }
@@ -90,10 +97,77 @@ export async function handleRequest(request, env) {
   return out;
 }
 
+// ---- Async capture (never blocks the hot path) ----
+
+const sampler = createSampler();
+let droppedSamples = 0; // samples lost to capture/ingest failures
+
+export function getDroppedSamples() {
+  return droppedSamples;
+}
+
+// Resettable in tests only (worker instance state).
+export function __resetCaptureState() {
+  sampler.clear();
+  droppedSamples = 0;
+}
+
+// Read and mask the response body, build the sample, POST it to INGEST_URL.
+// Never throws: every failure increments the dropped-sample counter instead.
+export async function captureAndShip(request, response, env, { durationMs, proxyMs }) {
+  const url = new URL(request.url);
+  const endpoint = `${request.method} ${templatePath(url.pathname)}`;
+  if (!shouldSample(sampler, endpoint)) return;
+
+  const ingestUrl = env.INGEST_URL;
+  if (!ingestUrl) {
+    droppedSamples += 1; // no ingest configured: sample exists but goes nowhere
+    return;
+  }
+
+  let bodyJson;
+  const contentType = response.headers.get('content-type') || '';
+  if (response.body && contentType.includes('application/json')) {
+    try {
+      bodyJson = await response.clone().json();
+    } catch {
+      bodyJson = undefined; // unreadable body ships without a body
+    }
+  }
+
+  const sample = buildSample({
+    method: request.method,
+    path: url.pathname,
+    status: response.status,
+    durationMs,
+    proxyMs,
+    bodyJson,
+  });
+
+  const res = await fetch(ingestUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(sample),
+  });
+  if (!res.ok) droppedSamples += 1;
+}
+
 export default {
   async fetch(request, env, ctx) {
-    // Capture of method/path/body/timings ships in the next milestone
-    // via ctx.waitUntil(...), after the response is returned.
-    return handleRequest(request, env);
+    const startedAt = Date.now();
+    const response = await handleRequest(request, env);
+    // Only capture successfully forwarded requests (401/502 are local
+    // errors, not API traffic worth learning from).
+    if (response.status !== 401 && response.status !== 502) {
+      ctx.waitUntil(
+        captureAndShip(request, response, env, {
+          durationMs: Date.now() - startedAt,
+          proxyMs: Number(response.headers.get('x-acf-proxy-ms')) || 0,
+        }).catch(() => {
+          droppedSamples += 1;
+        })
+      );
+    }
+    return response;
   },
 };
