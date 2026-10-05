@@ -57,6 +57,7 @@ test('10th request ships a masked, templated sample to INGEST_URL', async () => 
     assert.equal(sample.status, 200);
     assert.equal(sample.body.id, 7);
     assert.equal(sample.body.email, MASKED, 'PII masked before storage');
+    assert.equal(sample.service, 'demo', 'sample carries the service name');
     assert.equal(getDroppedSamples(), 0);
   });
 });
