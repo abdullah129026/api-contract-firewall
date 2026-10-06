@@ -9,6 +9,7 @@ function fakeDb() {
     endpoints: [],
     samples: [],
     versions: [],
+    violations: [],
   };
   return {
     state,
@@ -57,6 +58,39 @@ function fakeDb() {
     async insertSchemaVersion(v) {
       state.versions.push(v);
       return v;
+    },
+    async getBaselineSchemaVersion(endpointId) {
+      return state.versions.find((v) => v.endpointId === endpointId && v.isBaseline) || null;
+    },
+    async getMaxSchemaVersion(endpointId) {
+      return state.versions
+        .filter((v) => v.endpointId === endpointId)
+        .reduce((m, v) => Math.max(m, v.version), 0);
+    },
+    async upsertViolation({ endpointId, severity, kind, fieldPath, summary, detail }) {
+      const open = state.violations.find(
+        (v) =>
+          v.endpointId === endpointId &&
+          v.severity === severity &&
+          v.kind === kind &&
+          v.fieldPath === fieldPath &&
+          v.status === 'open'
+      );
+      if (open) {
+        open.occurrenceCount += 1;
+        return { created: false };
+      }
+      state.violations.push({
+        endpointId,
+        severity,
+        kind,
+        fieldPath,
+        summary,
+        detail,
+        status: 'open',
+        occurrenceCount: 1,
+      });
+      return { created: true };
     },
   };
 }
@@ -134,4 +168,61 @@ test('validateSample rejects malformed payloads', () => {
   ]) {
     assert.throws(() => validateSample(bad), ValidationError, JSON.stringify(bad));
   }
+});
+
+test('breaking diff on an enforcing sample records a violation and snapshots the drift', async () => {
+  const db = fakeDb();
+  for (let i = 0; i < 100; i++) {
+    await ingestSample(db, sample({ body: { id: i, name: 'w' } }));
+  }
+  assert.equal(db.state.violations.length, 0);
+
+  await ingestSample(db, sample({ body: { name: 'w' } }));
+  assert.equal(db.state.violations.length, 1);
+  const v = db.state.violations[0];
+  assert.equal(v.severity, 'breaking');
+  assert.equal(v.kind, 'removed_field');
+  assert.equal(v.fieldPath, 'id');
+  assert.equal(v.occurrenceCount, 1);
+  assert.equal(db.state.versions.length, 2);
+  const drift = db.state.versions[1];
+  assert.equal(drift.version, 2);
+  assert.equal(drift.isBaseline, false);
+  assert.equal(drift.source, 'detected');
+
+  // Same break again: bumps the count, no new version row.
+  await ingestSample(db, sample({ body: { name: 'w' } }));
+  assert.equal(db.state.violations.length, 1);
+  assert.equal(db.state.violations[0].occurrenceCount, 2);
+  assert.equal(db.state.versions.length, 2);
+});
+
+test('learning samples are never analyzed', async () => {
+  const db = fakeDb();
+  for (let i = 0; i < 50; i++) {
+    await ingestSample(db, sample({ body: { id: i } }));
+  }
+  await ingestSample(db, sample({ body: {} }));
+  assert.equal(db.state.violations.length, 0);
+  assert.equal(db.state.versions.length, 0);
+});
+
+test('non-2xx samples are not analyzed', async () => {
+  const db = fakeDb();
+  for (let i = 0; i < 100; i++) {
+    await ingestSample(db, sample({ body: { id: i } }));
+  }
+  await ingestSample(db, sample({ status: 500, body: { error: 'boom' } }));
+  assert.equal(db.state.violations.length, 0);
+  assert.equal(db.state.versions.length, 1);
+});
+
+test('truncated bodies are not analyzed', async () => {
+  const db = fakeDb();
+  for (let i = 0; i < 100; i++) {
+    await ingestSample(db, sample({ body: { id: i, name: 'w' } }));
+  }
+  await ingestSample(db, sample({ body: { name: 'w' }, bodyTruncated: true }));
+  assert.equal(db.state.violations.length, 0);
+  assert.equal(db.state.versions.length, 1);
 });

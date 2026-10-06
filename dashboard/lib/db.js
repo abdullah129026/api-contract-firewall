@@ -146,5 +146,55 @@ export function createDb({ url, serviceKey }) {
       });
       return rows[0];
     },
+    // The enforced baseline for an endpoint (null until it exists).
+    async getBaselineSchemaVersion(endpointId) {
+      const rows = await req(
+        `schema_versions?endpoint_id=eq.${endpointId}` +
+          `&is_baseline=is.true&select=version,schema&order=version.desc&limit=1`
+      );
+      return rows[0] || null;
+    },
+    async getMaxSchemaVersion(endpointId) {
+      const rows = await req(
+        `schema_versions?endpoint_id=eq.${endpointId}` +
+          `&select=version&order=version.desc&limit=1`
+      );
+      return rows.length ? rows[0].version : 0;
+    },
+    // Record a detected change. An open row for the same
+    // (endpoint, severity, kind, field) just gets its count bumped; a new
+    // distinct change inserts a row. Returns { created }.
+    async upsertViolation({ endpointId, severity, kind, fieldPath, summary, detail }) {
+      const open = await req(
+        `violations?endpoint_id=eq.${endpointId}` +
+          `&severity=eq.${encodeURIComponent(severity)}` +
+          `&kind=eq.${encodeURIComponent(kind)}` +
+          `&field_path=eq.${encodeURIComponent(fieldPath)}` +
+          `&status=eq.open&select=id,occurrence_count`
+      );
+      if (open[0]) {
+        await req(`violations?id=eq.${open[0].id}`, {
+          method: 'PATCH',
+          body: {
+            occurrence_count: open[0].occurrence_count + 1,
+            last_seen_at: new Date().toISOString(),
+          },
+        });
+        return { created: false };
+      }
+      await req('violations', {
+        method: 'POST',
+        body: {
+          endpoint_id: endpointId,
+          severity,
+          kind,
+          field_path: fieldPath,
+          summary,
+          detail: detail || {},
+          status: 'open',
+        },
+      });
+      return { created: true };
+    },
   };
 }

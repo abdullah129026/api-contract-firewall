@@ -9,6 +9,7 @@
 'use strict';
 
 import { inferSchema } from './schema.js';
+import { diffSchemas } from './detect.js';
 import { nextState, justBecameEnforcing, LEARNING_SAMPLE_TARGET } from './learning.js';
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
@@ -84,5 +85,50 @@ export async function ingestSample(db, rawPayload) {
     endpoint = await db.setEndpointEnforcing(endpoint.id);
   }
 
+  if (after === 'ENFORCING') {
+    await detectDrift(db, endpoint, sample);
+  }
+
   return endpoint;
+}
+
+// Compare a new sample against the enforced baseline and record violations.
+// Only 2xx responses with a complete JSON body are analyzed: error bodies
+// and truncated samples would raise false "field removed" violations.
+async function detectDrift(db, endpoint, sample) {
+  if (sample.status < 200 || sample.status >= 300) return;
+  if (sample.body === undefined || sample.body === null || sample.bodyTruncated) return;
+
+  const baseline = await db.getBaselineSchemaVersion(endpoint.id);
+  if (!baseline) return;
+
+  const observed = inferSchema([sample.body]);
+  const diffs = diffSchemas(baseline.schema, observed);
+  if (diffs.length === 0) return;
+
+  let isNew = false;
+  for (const d of diffs) {
+    const res = await db.upsertViolation({
+      endpointId: endpoint.id,
+      severity: d.severity,
+      kind: d.kind,
+      fieldPath: d.path,
+      summary: d.summary,
+      detail: d.detail,
+    });
+    if (res.created) isNew = true;
+  }
+
+  if (isNew) {
+    // First sighting of this diff: snapshot the drifted shape. One version
+    // per confirmed diff, never per sample (plan section 2.4).
+    const maxVersion = await db.getMaxSchemaVersion(endpoint.id);
+    await db.insertSchemaVersion({
+      endpointId: endpoint.id,
+      version: maxVersion + 1,
+      schema: observed,
+      isBaseline: false,
+      source: 'detected',
+    });
+  }
 }
