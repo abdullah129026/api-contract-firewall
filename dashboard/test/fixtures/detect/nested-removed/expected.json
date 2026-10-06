@@ -1,0 +1,9 @@
+{
+  "violations": [
+    {
+      "severity": "breaking",
+      "kind": "removed_field",
+      "path": "user.id"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "violations": [
+    {
+      "severity": "breaking",
+      "kind": "nullability_changed",
+      "path": "name"
+    }
+  ]
+}

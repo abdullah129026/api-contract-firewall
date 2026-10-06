@@ -1,0 +1,12 @@
+{
+  "violations": [
+    {
+      "severity": "warning",
+      "kind": "renamed",
+      "path": "id",
+      "detail": {
+        "renamedTo": "_id"
+      }
+    }
+  ]
+}
