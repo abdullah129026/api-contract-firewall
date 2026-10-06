@@ -28,3 +28,11 @@ Proxy (Cloudflare Worker secrets):
 
 Without `SUPABASE_URL` on the Worker, key validation falls back to the
 `SERVICES_JSON` secret (local dev only).
+
+## Migrations
+
+`schema.sql` is the full schema for new projects. If you already ran it
+before, apply the files in `migrations/` in order instead (SQL editor,
+one file at a time):
+
+- `0002_violations.sql` — violations table for the detection engine.

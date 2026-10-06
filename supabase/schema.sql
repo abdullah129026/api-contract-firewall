@@ -58,8 +58,9 @@ create table samples (
 create index samples_endpoint_id_sampled_at_idx on samples(endpoint_id, sampled_at desc);
 
 -- Learned schemas. A new row is created only when the endpoint transitions
--- to ENFORCING (version 1, marked as the baseline) or on a confirmed
--- breaking/warning diff or human approve. Never on raw sample variance.
+-- to ENFORCING (version 1, marked as the baseline), on a confirmed
+-- breaking/warning diff (source 'detected', not the baseline), or on human
+-- approve. Never on raw sample variance.
 create table schema_versions (
   id uuid primary key default gen_random_uuid(),
   endpoint_id uuid not null references endpoints(id) on delete cascade,
@@ -67,8 +68,42 @@ create table schema_versions (
   schema jsonb not null,
   is_baseline boolean not null default false,
   source text not null default 'learning'
-    check (source in ('learning', 'human')),
+    check (source in ('learning', 'human', 'detected')),
   created_at timestamptz not null default now(),
   unique (endpoint_id, version)
 );
 create index schema_versions_endpoint_id_idx on schema_versions(endpoint_id);
+
+-- Detected contract breaks. One open row per distinct change; repeat
+-- sightings bump occurrence_count and last_seen_at instead of inserting.
+-- Triage moves a row to approved or false_positive; a later recurrence
+-- then opens a fresh row.
+create table violations (
+  id uuid primary key default gen_random_uuid(),
+  endpoint_id uuid not null references endpoints(id) on delete cascade,
+  severity text not null check (severity in ('breaking', 'warning')),
+  kind text not null,
+  field_path text not null,
+  summary text not null,
+  detail jsonb not null default '{}',
+  status text not null default 'open'
+    check (status in ('open', 'approved', 'false_positive')),
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  occurrence_count integer not null default 1
+);
+create index violations_endpoint_id_idx on violations(endpoint_id);
+create index violations_open_idx on violations(endpoint_id) where status = 'open';
+create unique index violations_open_dedupe_idx
+  on violations(endpoint_id, severity, kind, field_path) where status = 'open';
+
+-- Explicit minimal grants on every table: service_role bypasses RLS but not
+-- grants, and Supabase stops auto-granting on new public tables for existing
+-- projects on 2026-10-30. A missing grant fails with 42501. Never GRANT ALL
+-- to anon or authenticated.
+grant select, insert, update, delete on public.services to service_role;
+grant select, insert, update, delete on public.api_keys to service_role;
+grant select, insert, update, delete on public.endpoints to service_role;
+grant select, insert, update, delete on public.samples to service_role;
+grant select, insert, update, delete on public.schema_versions to service_role;
+grant select, insert, update, delete on public.violations to service_role;
