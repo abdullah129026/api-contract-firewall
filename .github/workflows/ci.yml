@@ -18,3 +18,8 @@ jobs:
       - name: dashboard tests (incl. detection fixture suite)
         run: npm test
         working-directory: dashboard
+      - name: dashboard build
+        run: npm install --no-audit --no-fund && npm run build
+        working-directory: dashboard
+        env:
+          NEXT_TELEMETRY_DISABLED: 1

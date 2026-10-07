@@ -1,1 +1,1 @@
-{"description":"API Contract Firewall dashboard (Next.js). API routes and lib only for now; the UI shell lands in the Oct 9-10 milestone.","name":"acf-dashboard","private":true,"scripts":{"test":"node --test test/*.test.js"},"type":"module","version":"0.1.0"}
+{"dependencies":{"next":"^16.4.0","react":"^19.2.0","react-dom":"^19.2.0"},"description":"API Contract Firewall dashboard (Next.js).","name":"acf-dashboard","private":true,"scripts":{"build":"next build","dev":"next dev","start":"next start","test":"node --test test/*.test.js"},"type":"module","version":"0.1.0"}

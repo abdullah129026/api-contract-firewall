@@ -9,7 +9,6 @@
 
 export function createDb({ url, serviceKey }) {
   if (!url || !serviceKey) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY are required');
-
   const base = url.replace(/\/$/, '');
 
   async function req(path, { method = 'GET', body, prefer } = {}) {
@@ -164,8 +163,7 @@ export function createDb({ url, serviceKey }) {
     // Record a detected change. An open row for the same
     // (endpoint, severity, kind, field) just gets its count bumped; a new
     // distinct change inserts a row. Returns { created }.
-    async upsertViolation({ endpointId, severity, kind, fieldPath, summary, detail }) {
-      const open = await req(
+    async upsertViolation({ endpointId, severity, kind, fieldPath, summary, detail }) {      const open = await req(
         `violations?endpoint_id=eq.${endpointId}` +
           `&severity=eq.${encodeURIComponent(severity)}` +
           `&kind=eq.${encodeURIComponent(kind)}` +
@@ -196,5 +194,75 @@ export function createDb({ url, serviceKey }) {
       });
       return { created: true };
     },
+
+    // ---- Dashboard shell reads ----
+
+    async listServices() {
+      return req('services?select=id,name,origin,created_at&order=created_at.asc');
+    },
+    async getService(id) {
+      const rows = await req(
+        `services?id=eq.${encodeURIComponent(id)}&select=id,name,origin,created_at`
+      );
+      return rows[0] || null;
+    },
+    async listEndpointsByService(serviceId) {
+      return req(
+        `endpoints?service_id=eq.${encodeURIComponent(serviceId)}` +
+          `&select=id,method,path_template,state,sample_count,human_confirmed,last_seen_at` +
+          `&order=last_seen_at.desc`
+      );
+    },
+    // Key hashes only. The plaintext key is shown once at issuance and is
+    // never stored, so the setup screen can list keys but not re-display them.
+    async listApiKeys(serviceId) {
+      return req(
+        `api_keys?service_id=eq.${encodeURIComponent(serviceId)}` +
+          `&select=key_hash,label,created_at&order=created_at.desc`
+      );
+    },
+    // Recent per-request durations for the p95 sparkline, newest first.
+    async getLatencySeries(endpointId, limit = 120) {
+      const rows = await req(
+        `samples?endpoint_id=eq.${encodeURIComponent(endpointId)}` +
+          `&select=duration_ms&order=sampled_at.desc&limit=${limit}`
+      );
+      return rows.map((r) => r.duration_ms);
+    },
+    // Open breaking violations for one service. One query plus an in-memory
+    // filter.
+    // ponytail: an inner-join PostgREST filter would save the filter step,
+    // but endpoints per service are few in the MVP, so this stays readable.
+    async listOpenBreakingViolations(serviceId) {
+      const endpoints = await this.listEndpointsByService(serviceId);
+      const ids = new Set(endpoints.map((e) => e.id));
+      const rows = await req(
+        'violations?select=id,endpoint_id,field_path,summary&status=eq.open&severity=eq.breaking'
+      );
+      return rows.filter((r) => ids.has(r.endpoint_id));
+    },
+    // Latest schema change or violation sighting for an endpoint, for the
+    // "last change" column. Null when nothing changed yet.
+    async getLastChangeAt(endpointId) {
+      const enc = encodeURIComponent(endpointId);
+      const [versions, violations] = await Promise.all([
+        req(`schema_versions?endpoint_id=eq.${enc}&select=created_at&order=created_at.desc&limit=1`),
+        req(`violations?endpoint_id=eq.${enc}&select=first_seen_at&order=first_seen_at.desc&limit=1`),
+      ]);
+      const times = [];
+      if (versions[0]) times.push(new Date(versions[0].created_at).getTime());
+      if (violations[0]) times.push(new Date(violations[0].first_seen_at).getTime());
+      return times.length ? new Date(Math.max(...times)).toISOString() : null;
+    },
   };
+}
+
+// Returns a db client from env, or null when the env vars are absent. Pages
+// and routes use this so a missing DB config renders an empty state
+// instead of a 500.
+export function dbFromEnv() {
+  const url = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !serviceKey) return null;
+  return createDb({ url, serviceKey });
 }
