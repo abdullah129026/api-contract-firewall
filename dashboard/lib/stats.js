@@ -3,10 +3,19 @@
 
 'use strict';
 
-// p95 of a list of numbers. Empty list returns null (the table shows a dash).
-export function p95(values) {
+// Percentile of a list of numbers (0 < q <= 1). Empty list returns null
+// (the table shows a dash).
+function percentile(values, q) {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
-  const idx = Math.ceil(0.95 * sorted.length) - 1;
+  const idx = Math.ceil(q * sorted.length) - 1;
   return sorted[Math.max(0, idx)];
+}
+
+export function p95(values) {
+  return percentile(values, 0.95);
+}
+
+export function p50(values) {
+  return percentile(values, 0.5);
 }

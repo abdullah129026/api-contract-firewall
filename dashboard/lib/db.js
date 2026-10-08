@@ -195,6 +195,101 @@ export function createDb({ url, serviceKey }) {
       return { created: true };
     },
 
+    // ---- Triage and detail reads ----
+
+    async getEndpointById(id) {
+      const rows = await req(
+        `endpoints?id=eq.${encodeURIComponent(id)}` +
+          `&select=id,method,path_template,state,sample_count,last_seen_at,service_id,` +
+          `service:services(id,name)`
+      );
+      return rows[0] || null;
+    },
+    // Schema versions for the endpoint timeline, newest first.
+    async listSchemaVersions(endpointId) {
+      return req(
+        `schema_versions?endpoint_id=eq.${encodeURIComponent(endpointId)}` +
+          `&select=version,schema,is_baseline,source,created_at&order=version.desc`
+      );
+    },
+    // Violation stream. Filters are optional: status, severity,
+    // endpointId, q (matches the field path or the summary).
+    async listViolations({ status, severity, endpointId, q, limit = 200 } = {}) {
+      let path =
+        'violations?select=id,endpoint_id,severity,kind,field_path,summary,detail,' +
+        'status,first_seen_at,last_seen_at,occurrence_count,' +
+        'endpoint:endpoints(id,method,path_template,service_id,service:services(id,name))';
+      const filters = [];
+      if (status) filters.push(`status=eq.${encodeURIComponent(status)}`);
+      if (severity) filters.push(`severity=eq.${encodeURIComponent(severity)}`);
+      if (endpointId) filters.push(`endpoint_id=eq.${encodeURIComponent(endpointId)}`);
+      if (q) {
+        // The ilike pattern sits inside an or=(...) clause, so q cannot
+        // carry the clause's own punctuation.
+        const safe = q.replace(/[(),]/g, '');
+        const pat = `*${encodeURIComponent(safe)}*`;
+        filters.push(`or=(field_path.ilike.${pat},summary.ilike.${pat})`);
+      }
+      if (filters.length) path += `&${filters.join('&')}`;
+      path += '&order=last_seen_at.desc';
+      path += `&limit=${Math.max(1, Math.min(1000, limit))}`;
+      return req(path);
+    },
+    async getViolation(id) {
+      const rows = await req(
+        `violations?id=eq.${encodeURIComponent(id)}` +
+          `&select=id,endpoint_id,severity,kind,field_path,summary,detail,` +
+          `status,first_seen_at,last_seen_at,occurrence_count,` +
+          `endpoint:endpoints(id,method,path_template,service_id,service:services(id,name))`
+      );
+      return rows[0] || null;
+    },
+    async setViolationStatus(id, status) {
+      const rows = await req(`violations?id=eq.${encodeURIComponent(id)}&select=id,status`, {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        body: { status, last_seen_at: new Date().toISOString() },
+      });
+      return rows[0] || null;
+    },
+    // Merge extra keys into the violation's detail jsonb (read first, then
+    // write the union back; violations are not hot).
+    async mergeViolationDetail(id, extra) {
+      const v = await this.getViolation(id);
+      const detail = { ...(v.detail || {}), ...extra };
+      const rows = await req(`violations?id=eq.${encodeURIComponent(id)}&select=id`, {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        body: { detail },
+      });
+      return rows[0];
+    },
+    // Promote one schema version to the enforced baseline and demote the
+    // current one. Returns the promoted version and the id of the baseline
+    // it replaced (for the undo path).
+    async rebaseline(endpointId, versionId) {
+      const enc = encodeURIComponent(endpointId);
+      const current = await req(
+        `schema_versions?endpoint_id=eq.${enc}&is_baseline=is.true&select=version`
+      );
+      const previousBaseline = current[0] ? current[0].version : null;
+      if (previousBaseline !== null && previousBaseline !== versionId) {
+        await req(`schema_versions?endpoint_id=eq.${enc}&version=eq.${previousBaseline}`, {
+          method: 'PATCH',
+          body: { is_baseline: false },
+        });
+      }
+      const updated = await req(
+        `schema_versions?endpoint_id=eq.${enc}&version=eq.${versionId}&select=version`,
+        {
+          method: 'PATCH',
+          prefer: 'return=representation',
+          body: { is_baseline: true, source: 'human' },
+        }
+      );
+      return { versionId, previousBaseline, promoted: updated.length > 0 };
+    },
+
     // ---- Dashboard shell reads ----
 
     async listServices() {
