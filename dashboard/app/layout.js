@@ -22,6 +22,7 @@ export default async function RootLayout({ children }) {
           <nav className="nav">
             <p className="nav-label">Monitor</p>
             <a href="/">Services</a>
+            <a href="/violations">Violations</a>
             {services.map((s) => (
               <div className="nav-service" key={s.id}>
                 <a href={`/s/${s.id}`}>{s.name}</a>

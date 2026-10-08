@@ -68,7 +68,7 @@ export default async function Overview() {
                 requests through the proxy.
               </p>
             ) : (
-              <EndpointsTable rows={rows} />
+              <EndpointsTable rows={rows} serviceId={s.id} />
             )}
           </section>
         );

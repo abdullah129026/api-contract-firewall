@@ -43,7 +43,7 @@ export default async function ServiceDetail({ params }) {
         </p>
       ) : (
         <>
-          <EndpointsTable rows={rows} />
+          <EndpointsTable rows={rows} serviceId={id} />
           <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
             Samples are 1-in-10 per endpoint, so volume and p95 are approximate.
           </p>
