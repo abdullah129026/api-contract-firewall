@@ -4,6 +4,7 @@
 'use strict';
 
 import { p95 } from './stats.js';
+import { regressionCheck } from './latency.js';
 
 // ponytail: N+1 queries per endpoint (latency series + last change).
 // Endpoints per service are few in the MVP; batch this when it hurts.
@@ -30,6 +31,7 @@ export async function endpointRows(db, serviceId) {
         lastChangeAt,
         latencies,
         p95: p95(latencies),
+        regression: regressionCheck(latencies),
         breaking: breakingByEndpoint[e.id] || 0,
       };
     })

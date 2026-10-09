@@ -36,7 +36,16 @@ export default function EndpointsTable({ rows, serviceId }) {
             <td>
               <RelativeTime at={r.lastChangeAt} />
             </td>
-            <td className="mono">{r.p95 === null ? '--' : `${r.p95}ms`}</td>
+            <td className="mono">
+              {r.p95 === null ? '--' : `${r.p95}ms`}
+              {r.regression && r.regression.regressed && (
+                <div style={{ marginTop: 2 }}>
+                  <span className="pill pill-warn" title="Recent p50 is over 2x the baseline window">
+                    slow x{r.regression.ratio.toFixed(1)}
+                  </span>
+                </div>
+              )}
+            </td>
             <td>
               <Sparkline values={r.latencies} />
             </td>

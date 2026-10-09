@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation';
 import { dbFromEnv } from '../../../../../lib/db.js';
 import { p50, p95 } from '../../../../../lib/stats.js';
+import { regressionCheck } from '../../../../../lib/latency.js';
 import { CodeBlock, EmptyState, RelativeTime, Sparkline, StatusDot } from '../../../../../components/ui.js';
 
 export const dynamic = 'force-dynamic';
@@ -68,6 +69,7 @@ export default async function EndpointDetail({ params }) {
     return <EmptyState title="Could not reach the database" body="Supabase did not answer. Check the env vars and try again." />;
   }
   const baseline = versions.find((v) => v.is_baseline);
+  const regression = regressionCheck(latencies);
 
   return (
     <>
@@ -97,6 +99,15 @@ export default async function EndpointDetail({ params }) {
             {p95(latencies) === null ? '--' : `${p95(latencies)}ms`}
           </div>
           <p style={{ margin: '4px 0 0' }}>Per-request durations, sampled 1-in-10. Approximate.</p>
+          {regression && regression.regressed && (
+            <p style={{ margin: '8px 0 0' }}>
+              <span className="pill pill-warn">regression</span>{' '}
+              <span className="mono" style={{ fontSize: 13 }}>
+                p50 {regression.recentP50}ms vs baseline {regression.baselineP50}ms (x
+                {regression.ratio.toFixed(1)})
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
