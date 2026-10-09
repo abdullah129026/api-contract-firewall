@@ -107,3 +107,15 @@ grant select, insert, update, delete on public.endpoints to service_role;
 grant select, insert, update, delete on public.samples to service_role;
 grant select, insert, update, delete on public.schema_versions to service_role;
 grant select, insert, update, delete on public.violations to service_role;
+grant select, insert, update, delete on public.gate_evaluations to service_role;
+
+-- CI gate evaluations: one row per GET /api/gate call (pass or blocked).
+-- Rendered as the evaluation history on the gate screen.
+create table gate_evaluations (
+  id bigint generated always as identity primary key,
+  service_id uuid not null references services(id) on delete cascade,
+  decision text not null check (decision in ('pass', 'blocked')),
+  open_breaking integer not null default 0,
+  evaluated_at timestamptz not null default now()
+);
+create index gate_evaluations_service_idx on gate_evaluations(service_id, evaluated_at desc);

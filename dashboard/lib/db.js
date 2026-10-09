@@ -290,6 +290,29 @@ export function createDb({ url, serviceKey }) {
       return { versionId, previousBaseline, promoted: updated.length > 0 };
     },
 
+    // ---- CI gate ----
+
+    // Append one row per gate evaluation. Best-effort: callers never fail
+    // the gate itself because this write failed.
+    async insertGateEvaluation({ serviceId, decision, openBreaking }) {
+      await req('gate_evaluations', {
+        method: 'POST',
+        body: {
+          service_id: serviceId,
+          decision,
+          open_breaking: openBreaking,
+        },
+      });
+    },
+    // Evaluation history for the gate screen, newest first.
+    async listGateEvaluations(serviceId, limit = 20) {
+      return req(
+        `gate_evaluations?service_id=eq.${encodeURIComponent(serviceId)}` +
+          `&select=decision,open_breaking,evaluated_at&order=evaluated_at.desc` +
+          `&limit=${Math.max(1, Math.min(100, limit))}`
+      );
+    },
+
     // ---- Dashboard shell reads ----
 
     async listServices() {
