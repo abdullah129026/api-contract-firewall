@@ -28,6 +28,7 @@ export default async function RootLayout({ children }) {
                 <a href={`/s/${s.id}`}>{s.name}</a>
                 <div className="nav-sub">
                   <a href={`/s/${s.id}/setup`}>Setup</a>
+                  <a href={`/s/${s.id}/gate`}>Gate</a>
                 </div>
               </div>
             ))}

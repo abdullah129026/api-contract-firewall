@@ -33,6 +33,9 @@ export default async function ServiceDetail({ params }) {
         <a className="btn" href={`/s/${id}/setup`}>
           Setup
         </a>
+        <a className="btn" href={`/s/${id}/gate`}>
+          CI gate
+        </a>
       </div>
 
       <h3 className="section-title">Endpoints</h3>
