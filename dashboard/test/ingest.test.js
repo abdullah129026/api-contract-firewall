@@ -165,9 +165,15 @@ test('validateSample rejects malformed payloads', () => {
     sample({ status: 99 }),
     sample({ durationMs: -1 }),
     sample({ body: 'not-json' }),
+    sample({ body: { data: 'x'.repeat(33 * 1024) } }),
   ]) {
     assert.throws(() => validateSample(bad), ValidationError, JSON.stringify(bad));
   }
+});
+
+test('validateSample accepts bodies up to the size bound', () => {
+  const ok = validateSample(sample({ body: { data: 'x'.repeat(32 * 1024 - 20) } }));
+  assert.ok(ok);
 });
 
 test('breaking diff on an enforcing sample records a violation and snapshots the drift', async () => {

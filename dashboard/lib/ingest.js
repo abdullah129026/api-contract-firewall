@@ -14,6 +14,11 @@ import { nextState, justBecameEnforcing, LEARNING_SAMPLE_TARGET } from './learni
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
+// 2x the proxy-side truncation cap (capture.js): the proxy truncates at
+// 16KB, so anything bigger comes from a misbehaving caller and is rejected
+// instead of stored.
+const MAX_BODY_BYTES = 32 * 1024;
+
 export class ValidationError extends Error {}
 
 // The body the proxy ships (capture.js buildSample plus the service name).
@@ -33,8 +38,13 @@ export function validateSample(payload) {
       throw new ValidationError(`invalid ${field}`);
     }
   }
-  if (payload.body !== undefined && typeof payload.body !== 'object') {
-    throw new ValidationError('body must be JSON or omitted');
+  if (payload.body !== undefined) {
+    if (typeof payload.body !== 'object') {
+      throw new ValidationError('body must be JSON or omitted');
+    }
+    if (JSON.stringify(payload.body).length > MAX_BODY_BYTES) {
+      throw new ValidationError('body too large');
+    }
   }
   return payload;
 }
