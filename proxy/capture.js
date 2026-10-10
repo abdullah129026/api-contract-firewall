@@ -83,6 +83,12 @@ export function shouldSample(sampler, endpoint, now = Date.now()) {
   if (!entry || entry.minute !== minute) {
     entry = { minute, count: 0, sampled: 0 };
     sampler.set(endpoint, entry);
+    // The sampler lives as long as the Worker isolate, so drop endpoint
+    // windows that already rolled over. Without this, one map entry
+    // accumulates per endpoint that was ever requested.
+    for (const [key, e] of sampler) {
+      if (e.minute < minute) sampler.delete(key);
+    }
   }
   entry.count += 1;
   if (entry.sampled >= MAX_SAMPLES_PER_MINUTE) return false;

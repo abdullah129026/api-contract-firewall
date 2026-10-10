@@ -116,3 +116,75 @@ test('buildSample without body omits the body field', () => {
   assert.ok(!('body' in sample));
   assert.ok(!('bodyTruncated' in sample));
 });
+
+test('masking leaves no raw secret anywhere in the shipped sample', () => {
+  const body = {
+    ok: true,
+    user: {
+      password: 's3cr3t-pw',
+      Email: 'victim@example.com',
+      api_key: 'sk-live-abc123',
+      sessions: [{ authorization: 'Bearer xyz', deep: { ssn: '123-45-6789' } }],
+    },
+  };
+  const sample = buildSample({
+    method: 'POST',
+    path: '/login',
+    status: 200,
+    durationMs: 5,
+    proxyMs: 1,
+    bodyJson: body,
+  });
+  const shipped = JSON.stringify(sample);
+  for (const secret of ['s3cr3t-pw', 'victim@example.com', 'sk-live-abc123', 'Bearer xyz', '123-45-6789']) {
+    assert.ok(!shipped.includes(secret), `secret leaked into shipped sample: ${secret}`);
+  }
+  assert.ok(shipped.includes(MASKED), 'masked marker present');
+  assert.ok(shipped.includes('"ok":true'), 'non-sensitive fields survive');
+});
+
+test('maskSensitive does not mutate its input', () => {
+  const input = { email: 'a@b.com', profile: { password: 'x' }, list: [{ token: 'y' }] };
+  const before = JSON.stringify(input);
+  maskSensitive(input);
+  assert.equal(JSON.stringify(input), before, 'masking must copy, never rewrite the caller data');
+});
+
+test('maskSensitive redacts variant key spellings at any depth', () => {
+  const out = maskSensitive({
+    'API-KEY': 'k1',
+    level1: { e_mail: 'e@x.com', level2: [{ 'Credit-Card': '4111', note: 'keep' }] },
+  });
+  assert.equal(out['API-KEY'], MASKED);
+  assert.equal(out.level1.e_mail, MASKED);
+  assert.equal(out.level1.level2[0]['Credit-Card'], MASKED);
+  assert.equal(out.level1.level2[0].note, 'keep');
+});
+
+test('shouldSample resumes after the minute window rolls over', () => {
+  const sampler = createSampler();
+  const minute = Math.floor(1_700_000_000_000 / 60_000) * 60_000;
+  let sampled = 0;
+  for (let i = 1; i <= 3000; i++) {
+    if (shouldSample(sampler, 'GET /a', minute + i)) sampled += 1;
+  }
+  assert.equal(sampled, 200, 'capped within the minute');
+  // Next minute: the cap lifts and 1-in-10 sampling resumes.
+  sampled = 0;
+  const next = minute + 60_000;
+  for (let i = 1; i <= 100; i++) {
+    if (shouldSample(sampler, 'GET /a', next + i)) sampled += 1;
+  }
+  assert.equal(sampled, 10, 'sampling resumes in the new window');
+});
+
+test('shouldSample evicts rolled-over endpoint windows', () => {
+  const sampler = createSampler();
+  const minute = Math.floor(Date.now() / 60_000) * 60_000;
+  for (let i = 0; i < 500; i++) shouldSample(sampler, `GET /e${i}`, minute + i);
+  assert.equal(sampler.size, 500);
+  // A request in the next minute drops every stale window, so a long-lived
+  // isolate does not accumulate one entry per endpoint it ever saw.
+  shouldSample(sampler, 'GET /e0', minute + 60_000 + 1);
+  assert.equal(sampler.size, 1, 'only the fresh window remains');
+});
