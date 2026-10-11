@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }) {
     <>
       <aside className="sidebar">
         <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true" />
+          <img src="/icon.svg" alt="" width="22" height="22" aria-hidden="true" />
           Contract Firewall
         </a>
         <NavLinks services={services.map((s) => ({ id: s.id, name: s.name }))} />

@@ -3,6 +3,7 @@
 // one idea per section. Sections: header, hero, how it works, features,
 // waitlist.
 import WaitlistForm from '../../../components/WaitlistForm.js';
+import Reveal from '../../../components/Reveal.js';
 
 export const metadata = {
   title: 'API Contract Firewall — contract testing without writing contracts',
@@ -50,12 +51,31 @@ const FEATURES = [
   },
 ];
 
+// CSS-only traffic diagram: dots travel client -> proxy -> api on a
+// loop. Pure decoration; screen readers get the steps list instead.
+function ProxyFlow() {
+  return (
+    <div className="proxy-flow" aria-hidden="true">
+      <div className="proxy-track">
+        <span className="proxy-dot" />
+        <span className="proxy-dot d2" />
+        <span className="proxy-dot d3" />
+      </div>
+      <div className="proxy-nodes">
+        <span className="proxy-node">your client</span>
+        <span className="proxy-node hot">proxy</span>
+        <span className="proxy-node">your api</span>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="landing">
       <header className="landing-header">
         <a className="landing-brand" href="/landing">
-          <span className="brand-mark" aria-hidden="true" />
+          <img src="/icon.svg" alt="" width="22" height="22" aria-hidden="true" />
           Contract Firewall
         </a>
         <nav className="landing-nav">
@@ -66,26 +86,27 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      <section className="hero">
+      <Reveal as="section" className="hero-block">
+        <p className="hero-kicker">Contract testing without writing contracts</p>
         <h1>Your OpenAPI spec says one thing, production does another.</h1>
-        <p>
-          API Contract Firewall is contract testing without writing contracts. Point your
-          traffic at the proxy and it learns your API&rsquo;s real contract from observed
-          requests. When a deploy would break that contract, the CI gate blocks it,
-          before your consumers find out.
+        <p className="hero-sub">
+          Point your traffic at the proxy and it learns your API&rsquo;s real
+          contract from observed requests. When a deploy would break that
+          contract, the CI gate blocks it, before your consumers find out.
         </p>
         <div className="hero-ctas">
-          <a href={DEMO_URL} className="btn btn-primary">
+          <a href={DEMO_URL} className="btn btn-white">
             See the live demo
           </a>
-          <a href="#waitlist" className="btn">
+          <a href="#waitlist" className="btn btn-outline-white">
             Join the waitlist
           </a>
         </div>
-      </section>
+      </Reveal>
 
-      <section className="landing-section">
+      <Reveal as="section" className="landing-section">
         <h2>How it works</h2>
+        <ProxyFlow />
         <ol className="landing-steps">
           {STEPS.map((s) => (
             <li key={s.n}>
@@ -97,9 +118,9 @@ export default function LandingPage() {
             </li>
           ))}
         </ol>
-      </section>
+      </Reveal>
 
-      <section className="landing-section">
+      <Reveal as="section" className="landing-section">
         <h2>What you get</h2>
         <ul className="landing-features">
           {FEATURES.map((f) => (
@@ -109,16 +130,16 @@ export default function LandingPage() {
             </li>
           ))}
         </ul>
-      </section>
+      </Reveal>
 
-      <section className="landing-section" id="waitlist">
+      <Reveal as="section" className="landing-section" id="waitlist">
         <h2>Join the waitlist</h2>
         <p className="landing-lede">
           We are opening it up gradually. Leave your email and we will write
           when your turn comes.
         </p>
         <WaitlistForm />
-      </section>
+      </Reveal>
 
       <footer className="landing-footer">
         <p>
