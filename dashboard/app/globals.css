@@ -105,19 +105,20 @@ a:focus-visible, button:focus-visible, select:focus-visible {
 }
 .nav a svg { flex: none; }
 .nav a:hover { background: var(--bg-2); color: var(--text-1); text-decoration: none; }
-/* Active page: soft orange fill plus a brand edge. */
+/* Active page: quiet gray fill, no brand edge. Cloudflare's sidebar
+   marks the active item subtly; the orange stays on primary actions. */
 .nav a.active {
-  background: #fdf1e2;
+  background: var(--bg-2);
   color: var(--text-1);
   font-weight: 550;
-  box-shadow: inset 2px 0 0 var(--brand);
 }
 .nav-service { margin-top: 14px; }
 .nav-service > a { color: var(--text-1); font-weight: 600; }
 .nav-sub a { padding-left: 36px; font-size: 13px; }
 
-/* Top bar: white, sticky, one job: global search into the violations
-   stream. Plain GET form, no client JS needed. */
+/* Top bar: white, sticky, slim. Holds utility links only (Docs),
+   like Cloudflare's top bar. Search lives on the violations page
+   where it belongs, not in a global slot. */
 .topbar {
   position: sticky;
   top: 0;
@@ -126,22 +127,17 @@ a:focus-visible, button:focus-visible, select:focus-visible {
   border-bottom: 1px solid var(--line);
   padding: 10px 44px;
   margin: 0 -44px 28px;
+  display: flex;
+  justify-content: flex-end;
 }
-.topbar-search { display: flex; max-width: 420px; position: relative; }
-.topbar-search svg {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-3);
-  pointer-events: none;
+.topbar-docs {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 550;
+  text-decoration: none;
+  padding: 6px 4px;
 }
-.topbar-search input {
-  background: var(--bg-0);
-  border: 1px solid transparent;
-  padding-left: 34px;
-}
-.topbar-search input:focus { background: var(--bg-1); border-color: var(--brand); }
+.topbar-docs:hover { color: var(--text-1); text-decoration: underline; }
 
 /* Main */
 .main { margin-left: 248px; padding: 0 44px 64px; max-width: 1224px; }

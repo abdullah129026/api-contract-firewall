@@ -1,4 +1,4 @@
-// Root layout: sidebar nav, top bar with global search, page content.
+// Root layout: sidebar nav, slim top bar with a Docs link, page content.
 // Force dynamic so missing DB env vars render an empty state at request
 // time instead of failing the build.
 import './globals.css';
@@ -24,13 +24,9 @@ export default async function RootLayout({ children }) {
         </aside>
         <main className="main">
           <header className="topbar">
-            <form action="/violations" method="GET" className="topbar-search" role="search">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <line x1="16.5" y1="16.5" x2="21" y2="21" />
-              </svg>
-              <input type="text" name="q" placeholder="Search violations…" aria-label="Search violations" />
-            </form>
+            <a className="topbar-docs" href="https://github.com/abdullah129026/api-contract-firewall">
+              Docs
+            </a>
           </header>
           {children}
         </main>
