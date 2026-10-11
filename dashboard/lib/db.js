@@ -38,6 +38,12 @@ export function createDb({ url, serviceKey }) {
       );
       return rows[0] || null;
     },
+    async getServiceById(id) {
+      const rows = await req(
+        `services?id=eq.${encodeURIComponent(id)}&select=id,name,origin`
+      );
+      return rows[0] || null;
+    },
     async createService({ name, origin }) {
       const rows = await req('services', {
         method: 'POST',
