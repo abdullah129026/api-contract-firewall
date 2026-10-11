@@ -103,34 +103,6 @@ export async function handleRequest(request, env) {
   const startedAt = Date.now();
   const url = new URL(request.url);
 
-  // Temporary debug endpoint for the 2026-10-11 ingest outage.
-  // Reports whether the worker can POST samples to INGEST_URL.
-  // Exposes only prefixes/lengths, never secret values. Remove after.
-  if (url.pathname === '/__debug-supabase') {
-    const out = {
-      ingest_url_set: !!env.INGEST_URL,
-      ingest_url_prefix: (env.INGEST_URL || '').slice(0, 60),
-      ingest_secret_set: !!env.INGEST_SECRET,
-      ingest_secret_len: (env.INGEST_SECRET || '').length,
-    };
-    try {
-      const res = await fetch(env.INGEST_URL, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          ...(env.INGEST_SECRET ? { authorization: `Bearer ${env.INGEST_SECRET}` } : {}),
-        },
-        body: JSON.stringify({ _debug: 'ingest-handshake-test' }),
-      });
-      out.ingest_status = res.status;
-      out.ingest_ok = res.ok;
-      out.ingest_body = (await res.text()).slice(0, 200);
-    } catch (e) {
-      out.ingest_error = String(e).slice(0, 140);
-    }
-    return Response.json(out);
-  }
-
   const apiKey = request.headers.get('x-api-key');
 
   if (!apiKey) {
