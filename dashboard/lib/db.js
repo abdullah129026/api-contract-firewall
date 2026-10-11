@@ -319,6 +319,23 @@ export function createDb({ url, serviceKey }) {
       );
     },
 
+    // Waitlist signup. The email column is unique; PostgREST answers 409
+    // on a duplicate, which is not an error for the user (they are
+    // already on the list), so it becomes a status instead of a throw.
+    async addToWaitlist(email) {
+      try {
+        const rows = await req('waitlist', {
+          method: 'POST',
+          prefer: 'return=representation',
+          body: { email },
+        });
+        return { status: 'joined', row: rows[0] };
+      } catch (err) {
+        if (/^supabase 409/.test(err.message)) return { status: 'already' };
+        throw err;
+      }
+    },
+
     // ---- Dashboard shell reads ----
 
     async listServices() {
