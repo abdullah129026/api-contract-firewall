@@ -1,8 +1,21 @@
 # API Contract Firewall
 
+**Your OpenAPI spec says one thing, production does another.**
+
+![30-second demo: break → violation → blocked deploy → approve](docs/demo.gif)
+
 Contract testing without writing contracts. Point your API traffic at the proxy;
 it learns your API's real contract from observed traffic, alerts on drift, and
 blocks deploys that would break it.
+
+**Live:** [dashboard](https://api-contract-firewall.vercel.app) ·
+[landing page](https://api-contract-firewall.vercel.app/landing) ·
+[proxy](https://acf-proxy.aboullahshah.workers.dev)
+
+**Proxy overhead (measured 2026-10-11):** 92ms p50 vs direct origin
+(70.7ms direct → 162.9ms via proxy, 15 sequential POSTs). Dominated by the
+Supabase key lookup (cached 60s/isolate) plus one extra network hop. Fine for
+a contract firewall; this is not a latency-critical proxy.
 
 **Status:** build in progress (sprint 2026-10-02 → 2026-10-16). See
 [PLAN.md](PLAN.md) for milestones, [RESEARCH.md](RESEARCH.md) for background.
