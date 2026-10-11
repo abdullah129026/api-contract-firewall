@@ -1,6 +1,6 @@
-// Violation detail: what changed, how confident the detector is, and
-// the triage actions. Confidence comes from the baseline's per-field
-// seen/total counts the detector recorded in the violation detail.
+// Violation detail: evidence first, then the decision. The decision bar
+// sits directly under the evidence and states the consequence before the
+// buttons, so approving is an informed act, not a guess.
 import { notFound } from 'next/navigation';
 import { dbFromEnv } from '../../../lib/db.js';
 import { CodeBlock, EmptyState, RelativeTime } from '../../../components/ui.js';
@@ -35,6 +35,34 @@ function Evidence({ violation }) {
   );
 }
 
+// The decision bar: what happens if you click, in plain words.
+function DecisionBar({ violation }) {
+  if (violation.status === 'open') {
+    return (
+      <div className="decision-bar">
+        <h3>Decide</h3>
+        <p>
+          Approving makes the new shape the enforced baseline, and the gate
+          passes again. Dismissing marks this a false positive; the detector
+          keeps watching, and a recurrence opens a fresh row.
+        </p>
+        <TriageButtons violationId={violation.id} status={violation.status} />
+      </div>
+    );
+  }
+  const note =
+    violation.status === 'approved'
+      ? 'Approved. The changed shape is now the enforced baseline.'
+      : 'Marked as a false positive. The detector keeps watching; a recurrence opens a fresh row.';
+  return (
+    <div className="decision-bar">
+      <h3>Decision recorded</h3>
+      <p>{note}</p>
+      <TriageButtons violationId={violation.id} status={violation.status} />
+    </div>
+  );
+}
+
 export default async function ViolationDetail({ params }) {
   const { vid } = await params;
   const db = dbFromEnv();
@@ -46,23 +74,15 @@ export default async function ViolationDetail({ params }) {
   if (!violation) notFound();
 
   const ep = violation.endpoint;
-  const statusLine =
-    violation.status === 'open'
-      ? 'Open. The CI gate blocks deploys while it is open.'
-      : violation.status === 'approved'
-        ? 'Approved. The changed shape is now the enforced baseline.'
-        : 'Marked as a false positive. The detector keeps watching; a recurrence opens a fresh row.';
 
   return (
     <>
-      <p className="page-sub" style={{ marginBottom: 8 }}>
-        <a href="/violations" style={{ color: 'inherit' }}>
-          Violations
-        </a>
-        {' / '}
+      <p className="crumbs">
+        <a href="/violations">Violations</a>
+        <span className="sep" aria-hidden="true">/</span>
         <span className="mono">{violation.id.slice(0, 8)}</span>
       </p>
-      <h1 className="page-title mono" style={{ fontSize: 19, letterSpacing: '-0.01em' }}>
+      <h1 className="page-title" style={{ letterSpacing: '-0.01em' }}>
         {violation.summary}
       </h1>
       <p className="page-sub">
@@ -75,23 +95,15 @@ export default async function ViolationDetail({ params }) {
         </a>
         {' · '}
         {ep.service.name}
+        {' · '}
+        seen {violation.occurrence_count} time{violation.occurrence_count === 1 ? '' : 's'},
+        last <RelativeTime at={violation.last_seen_at} />
       </p>
 
-      <div className="panel">
-        <h3>Status</h3>
-        <p>{statusLine}</p>
-        <TriageButtons violationId={violation.id} status={violation.status} />
-      </div>
-
-      <h3 className="section-title">Evidence</h3>
+      <h3 className="section-title">What changed</h3>
       <Evidence violation={violation} />
 
-      <h3 className="section-title">Occurrences</h3>
-      <p className="muted" style={{ fontSize: 13 }}>
-        Seen {violation.occurrence_count} time{violation.occurrence_count === 1 ? '' : 's'} ·
-        first <RelativeTime at={violation.first_seen_at} /> · last{' '}
-        <RelativeTime at={violation.last_seen_at} />
-      </p>
+      <DecisionBar violation={violation} />
 
       <h3 className="section-title">Raw detail</h3>
       <CodeBlock code={JSON.stringify(violation.detail || {}, null, 2)} />

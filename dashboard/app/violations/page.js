@@ -108,8 +108,9 @@ export default async function Violations({ searchParams }) {
     <>
       <h1 className="page-title">Violations</h1>
       <p className="page-sub">
-        Contract changes the detector raised, plus latency regressions. Approving a contract change
-        makes the new shape the contract.
+        Changes that need a decision. Approve the ones you meant to ship;
+        dismiss the noise. The gate stays blocked until each open breaking
+        change is decided.
       </p>
 
       {endpointId && (
@@ -150,7 +151,8 @@ export default async function Violations({ searchParams }) {
       </form>
 
       <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
-        {total} result{total === 1 ? '' : 's'}
+        {total} change{total === 1 ? '' : 's'}
+        {status === 'open' && total > 0 ? ' waiting for a decision' : ''}
       </p>
 
       {violations.length === 0 && warnings.length === 0 ? (
