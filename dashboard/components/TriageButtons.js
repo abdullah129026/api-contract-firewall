@@ -42,7 +42,7 @@ export default function TriageButtons({ violationId, status }) {
           disabled={busy}
           onClick={() => act('approve')}
         >
-          {busy ? 'Working...' : 'Approve change'}
+          {busy ? 'Working...' : 'Approve new contract'}
         </button>
         <button className="btn" type="button" disabled={busy} onClick={() => act('false_positive')}>
           False positive

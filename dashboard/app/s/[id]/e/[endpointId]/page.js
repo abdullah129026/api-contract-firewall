@@ -73,12 +73,10 @@ export default async function EndpointDetail({ params }) {
 
   return (
     <>
-      <p className="page-sub" style={{ marginBottom: 8 }}>
-        <a href={`/s/${id}`} style={{ color: 'inherit' }}>
-          {endpoint.service.name}
-        </a>
-        {' / '}
-        <span className="muted">endpoint</span>
+      <p className="crumbs">
+        <a href={`/s/${id}`}>{endpoint.service.name}</a>
+        <span className="sep" aria-hidden="true">/</span>
+        <span>endpoint</span>
       </p>
       <h1 className="page-title mono">
         <span className="method">{endpoint.method}</span>

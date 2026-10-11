@@ -1,4 +1,6 @@
-// Service setup: proxy URL, API keys, curl, test request, live traffic.
+// Service setup: get a key, point traffic at the proxy, watch it learn.
+// Three steps, each showing its own state: done steps get the accent,
+// the current step holds the action, upcoming steps wait their turn.
 // The plaintext key is shown once at issuance and never stored; the key
 // table lists labels and hash fingerprints only.
 import { notFound } from 'next/navigation';
@@ -12,6 +14,18 @@ export const dynamic = 'force-dynamic';
 
 const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL || 'https://<your-worker>.workers.dev';
 
+function GuideStep({ n, state, title, children }) {
+  return (
+    <div className={`guide-step ${state}`}>
+      <div className="guide-num">{n}</div>
+      <div className="guide-body">
+        <h3>{title}</h3>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default async function Setup({ params }) {
   const { id } = await params;
   const db = dbFromEnv();
@@ -21,84 +35,92 @@ export default async function Setup({ params }) {
 
   const service = await db.getService(id).catch(() => null);
   if (!service) notFound();
-  const keys = await db.listApiKeys(id).catch(() => []);
+  const [keys, endpoints] = await Promise.all([
+    db.listApiKeys(id).catch(() => []),
+    db.listEndpointsByService(id).catch(() => []),
+  ]);
 
+  const hasKey = keys.length > 0;
+  const trafficSeen = endpoints.some((e) => e.last_seen_at);
   const curl = `curl -H "x-api-key: <API_KEY>" ${PROXY_URL}/health`;
 
   return (
     <>
-      <h1 className="page-title">{service.name}: setup</h1>
+      <p className="crumbs">
+        <a href={`/s/${id}`}>{service.name}</a>
+        <span className="sep" aria-hidden="true">/</span>
+        <span>setup</span>
+      </p>
+      <h1 className="page-title">Connect {service.name}</h1>
       <p className="page-sub">
-        Route traffic through the proxy. The contract starts learning on the first request.
+        Three steps. The contract starts learning on the first request that
+        passes through the proxy.
       </p>
 
-      <div className="step">
-        <div className="step-num">1</div>
-        <div className="step-body">
-          <div className="panel">
-            <h3>Proxy URL</h3>
-            <p>Point your client at this host instead of your origin. Same paths, same responses.</p>
-            <CodeBlock code={PROXY_URL} />
-          </div>
-        </div>
-      </div>
-
-      <div className="step">
-        <div className="step-num">2</div>
-        <div className="step-body">
-          <div className="panel">
-            <h3>API keys</h3>
-            <p>One key per client. Keys are shown once at creation; only the hash is stored.</p>
-            {keys.length > 0 && (
-              <table className="data" style={{ marginBottom: 16 }}>
-                <thead>
-                  <tr>
-                    <th>Label</th>
-                    <th>Fingerprint</th>
-                    <th>Created</th>
+      <div className="guide">
+        <GuideStep n={1} state={hasKey ? 'done' : 'current'} title="Get an API key">
+          <p>
+            One key per client. It is shown once, right after creation; the
+            dashboard stores only its hash.
+          </p>
+          {keys.length > 0 && (
+            <table className="data" style={{ marginBottom: 16 }}>
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Fingerprint</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keys.map((k) => (
+                  <tr key={k.key_hash}>
+                    <td>{k.label}</td>
+                    <td className="mono muted">{k.key_hash.slice(0, 12)}...</td>
+                    <td>
+                      <RelativeTime at={k.created_at} />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {keys.map((k) => (
-                    <tr key={k.key_hash}>
-                      <td>{k.label}</td>
-                      <td className="mono muted">{k.key_hash.slice(0, 12)}...</td>
-                      <td>
-                        <RelativeTime at={k.created_at} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <NewKeyButton serviceId={id} />
-          </div>
-        </div>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <NewKeyButton serviceId={id} />
+        </GuideStep>
 
-      <div className="step">
-        <div className="step-num">3</div>
-        <div className="step-body">
-          <div className="panel">
-            <h3>Send traffic</h3>
-            <p>Replace the origin host with the proxy URL and add your key as a header.</p>
-            <CodeBlock code={curl} />
-            <div style={{ marginTop: 16 }}>
-              <TestRequestButton serviceId={id} proxyUrl={PROXY_URL} />
-            </div>
+        <GuideStep
+          n={2}
+          state={!hasKey ? 'todo' : trafficSeen ? 'done' : 'current'}
+          title="Point traffic at the proxy"
+        >
+          <p>
+            Use this host instead of your origin. Same paths, same responses,
+            with your key as a header.
+          </p>
+          <CodeBlock code={PROXY_URL} />
+          <div style={{ marginTop: 16 }}>
+            <TestRequestButton serviceId={id} proxyUrl={PROXY_URL} />
           </div>
-        </div>
-      </div>
+          <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
+            Or from your own client:
+          </p>
+          <CodeBlock code={curl} />
+        </GuideStep>
 
-      <div className="step">
-        <div className="step-num">4</div>
-        <div className="step-body">
-          <div className="panel">
-            <h3>Watch it arrive</h3>
-            <p>The indicator turns live when the proxy reports traffic for this service.</p>
+        <GuideStep
+          n={3}
+          state={!hasKey ? 'todo' : trafficSeen ? 'done' : 'current'}
+          title="Watch it learn"
+        >
+          <p>
             <LiveTraffic serviceId={id} />
-          </div>
-        </div>
+          </p>
+          <p>
+            The first requests teach the contract. After 100 samples, or when
+            you confirm it, the firewall starts enforcing: every new response
+            gets compared against what was learned.
+          </p>
+        </GuideStep>
       </div>
     </>
   );

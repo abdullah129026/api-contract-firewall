@@ -25,6 +25,11 @@ export default async function ServiceDetail({ params }) {
 
   return (
     <>
+      <p className="crumbs">
+        <a href="/">Services</a>
+        <span className="sep" aria-hidden="true">/</span>
+        <span>{service.name}</span>
+      </p>
       <h1 className="page-title">{service.name}</h1>
       <p className="page-sub mono">{service.origin}</p>
 
@@ -40,10 +45,16 @@ export default async function ServiceDetail({ params }) {
 
       <h3 className="section-title">Endpoints</h3>
       {rows.length === 0 ? (
-        <p className="muted" style={{ fontSize: 13 }}>
-          No traffic seen yet. Finish the <a href={`/s/${id}/setup`}>setup</a> and send requests
-          through the proxy.
-        </p>
+        <div className="panel">
+          <h3>No traffic yet</h3>
+          <p>
+            The proxy has not reported any requests for this service. Finish
+            setup and send traffic to start learning the contract.
+          </p>
+          <a className="btn btn-primary" href={`/s/${id}/setup`}>
+            Finish setup
+          </a>
+        </div>
       ) : (
         <>
           <EndpointsTable rows={rows} serviceId={id} />

@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { dbFromEnv } from '../../../../lib/db.js';
 import { endpointRows } from '../../../../lib/overview.js';
-import { CodeBlock, EmptyState, GatePill, RelativeTime } from '../../../../components/ui.js';
+import { CodeBlock, EmptyState, RelativeTime } from '../../../../components/ui.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,30 +47,36 @@ export default async function Gate({ params }) {
 
   return (
     <>
-      <p className="page-sub" style={{ marginBottom: 8 }}>
-        <a href={`/s/${id}`} style={{ color: 'inherit' }}>
-          {service.name}
-        </a>
-        {' / '}
-        <span className="muted">gate</span>
+      <p className="crumbs">
+        <a href={`/s/${id}`}>{service.name}</a>
+        <span className="sep" aria-hidden="true">/</span>
+        <span>gate</span>
       </p>
       <h1 className="page-title">CI gate</h1>
       <p className="page-sub">
-        The gate passes unless this service has open breaking violations. Approving or dismissing
-        them passes it again. Add the step below to your pipeline to block deploys on a broken
-        contract.
+        One question: is this service safe to deploy? The gate answers it.
+        Wire the step below into your pipeline.
       </p>
 
-      <div className="panel" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-        <GatePill openBreaking={openBreaking} />
-        <p style={{ margin: 0 }}>
-          {openBreaking > 0
-            ? `${openBreaking} open breaking violation${openBreaking === 1 ? '' : 's'}. Deploys calling /api/gate are blocked until they are approved or dismissed.`
-            : 'No open breaking violations. Deploys calling /api/gate pass.'}
-        </p>
+      <div className={`status-banner${openBreaking > 0 ? ' alert' : ''}`} role={openBreaking > 0 ? 'alert' : undefined}>
+        <div>
+          <p className="verdict">{openBreaking > 0 ? 'Blocked' : 'Passing'}</p>
+          <p className="detail">
+            {openBreaking > 0
+              ? `${openBreaking} open breaking violation${openBreaking === 1 ? '' : 's'}. Deploys calling /api/gate are blocked until each one is approved or dismissed.`
+              : 'No open breaking violations. Deploys calling /api/gate pass.'}
+          </p>
+        </div>
+        {openBreaking > 0 && (
+          <div className="action">
+            <a className="btn btn-primary" href="/violations?status=open">
+              Review now
+            </a>
+          </div>
+        )}
       </div>
 
-      <h3 className="section-title">GitHub Actions step</h3>
+      <h3 className="section-title">Add it to your pipeline</h3>
       <CodeBlock code={SNIPPET(host)} />
       <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
         Store a key from the <a href={`/s/${id}/setup`}>setup page</a> as the ACF_API_KEY repository

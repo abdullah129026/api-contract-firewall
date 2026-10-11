@@ -10,20 +10,20 @@ export function StatusDot({ state }) {
 }
 
 // Gate pill for a service: blocked (red) when any open breaking violation
-// exists, passing (emerald) otherwise. Color on the badge, not the text.
+// exists, passing (emerald) otherwise. Plain words, no jargon.
 export function GatePill({ openBreaking }) {
   if (openBreaking > 0) {
     return (
       <span className="pill pill-block">
         <span className="dot" style={{ background: 'var(--red)' }} />
-        gate: blocked ({openBreaking})
+        Blocked ({openBreaking})
       </span>
     );
   }
   return (
     <span className="pill pill-pass">
       <span className="dot" style={{ background: 'var(--accent)' }} />
-      gate: passing
+      Passing
     </span>
   );
 }
