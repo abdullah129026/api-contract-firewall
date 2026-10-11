@@ -28,9 +28,9 @@ export default async function ServiceDetail({ params }) {
       <h1 className="page-title">{service.name}</h1>
       <p className="page-sub mono">{service.origin}</p>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
         <GatePill openBreaking={openBreaking} />
-        <a className="btn" href={`/s/${id}/setup`}>
+        <a className="btn btn-primary" href={`/s/${id}/setup`}>
           Setup
         </a>
         <a className="btn" href={`/s/${id}/gate`}>

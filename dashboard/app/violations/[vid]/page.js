@@ -62,7 +62,7 @@ export default async function ViolationDetail({ params }) {
         {' / '}
         <span className="mono">{violation.id.slice(0, 8)}</span>
       </p>
-      <h1 className="page-title mono" style={{ fontSize: 17 }}>
+      <h1 className="page-title mono" style={{ fontSize: 19, letterSpacing: '-0.01em' }}>
         {violation.summary}
       </h1>
       <p className="page-sub">

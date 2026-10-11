@@ -61,8 +61,13 @@ export default async function Gate({ params }) {
         contract.
       </p>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+      <div className="panel" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
         <GatePill openBreaking={openBreaking} />
+        <p style={{ margin: 0 }}>
+          {openBreaking > 0
+            ? `${openBreaking} open breaking violation${openBreaking === 1 ? '' : 's'}. Deploys calling /api/gate are blocked until they are approved or dismissed.`
+            : 'No open breaking violations. Deploys calling /api/gate pass.'}
+        </p>
       </div>
 
       <h3 className="section-title">GitHub Actions step</h3>
@@ -83,7 +88,7 @@ export default async function Gate({ params }) {
             <tr>
               <th>Time</th>
               <th>Decision</th>
-              <th>Open breaking</th>
+              <th className="num">Open breaking</th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +110,7 @@ export default async function Gate({ params }) {
                     </span>
                   )}
                 </td>
-                <td className="mono">{h.open_breaking}</td>
+                <td className="mono num">{h.open_breaking}</td>
               </tr>
             ))}
           </tbody>

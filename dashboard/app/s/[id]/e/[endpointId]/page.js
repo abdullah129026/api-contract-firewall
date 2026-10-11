@@ -91,24 +91,33 @@ export default async function EndpointDetail({ params }) {
       </p>
 
       <h3 className="section-title">Latency</h3>
-      <div className="panel" style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
-        <Sparkline values={latencies} width={180} height={44} />
-        <div>
-          <div className="mono" style={{ fontSize: 15 }}>
-            p50 {p50(latencies) === null ? '--' : `${p50(latencies)}ms`} · p95{' '}
-            {p95(latencies) === null ? '--' : `${p95(latencies)}ms`}
+      <div className="panel">
+        <div className="stats">
+          <div>
+            <div className="stat-label">p50</div>
+            <div className="stat-value">{p50(latencies) === null ? '--' : `${p50(latencies)}ms`}</div>
           </div>
-          <p style={{ margin: '4px 0 0' }}>Per-request durations, sampled 1-in-10. Approximate.</p>
-          {regression && regression.regressed && (
-            <p style={{ margin: '8px 0 0' }}>
-              <span className="pill pill-warn">regression</span>{' '}
-              <span className="mono" style={{ fontSize: 13 }}>
-                p50 {regression.recentP50}ms vs baseline {regression.baselineP50}ms (x
-                {regression.ratio.toFixed(1)})
-              </span>
-            </p>
-          )}
+          <div>
+            <div className="stat-label">p95</div>
+            <div className="stat-value">{p95(latencies) === null ? '--' : `${p95(latencies)}ms`}</div>
+          </div>
+          <div>
+            <div className="stat-label">Trend</div>
+            <Sparkline values={latencies} width={180} height={40} />
+          </div>
         </div>
+        <p className="muted" style={{ fontSize: 12, margin: '14px 0 0' }}>
+          Per-request durations, sampled 1-in-10. Approximate.
+        </p>
+        {regression && regression.regressed && (
+          <p style={{ margin: '10px 0 0' }}>
+            <span className="pill pill-warn">regression</span>{' '}
+            <span className="mono" style={{ fontSize: 13 }}>
+              p50 {regression.recentP50}ms vs baseline {regression.baselineP50}ms (x
+              {regression.ratio.toFixed(1)})
+            </span>
+          </p>
+        )}
       </div>
 
       <h3 className="section-title">Violations ({violations.length})</h3>

@@ -102,6 +102,7 @@ export default async function Violations({ searchParams }) {
     return <EmptyState title="Could not reach the database" body="Supabase did not answer. Check the env vars and try again." />;
   }
   const warnings = await latencyWarnings(db, { status, severity, q, endpointId });
+  const total = violations.length + warnings.length;
 
   return (
     <>
@@ -143,10 +144,14 @@ export default async function Violations({ searchParams }) {
           Search
           <input type="text" name="q" placeholder="field path or summary" defaultValue={q} />
         </label>
-        <button className="btn" type="submit">
+        <button className="btn btn-primary" type="submit">
           Filter
         </button>
       </form>
+
+      <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>
+        {total} result{total === 1 ? '' : 's'}
+      </p>
 
       {violations.length === 0 && warnings.length === 0 ? (
         <EmptyState

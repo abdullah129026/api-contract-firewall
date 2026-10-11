@@ -52,16 +52,17 @@ export default async function Overview() {
           <section key={s.id}>
             <div className="service-head">
               <h2>
-                <a href={`/s/${s.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                  {s.name}
-                </a>
+                <a href={`/s/${s.id}`}>{s.name}</a>
               </h2>
-              <span className="origin">{s.origin}</span>
               <GatePill openBreaking={openBreaking} />
-              <span className="muted" style={{ fontSize: 12 }}>
+            </div>
+            <p className="service-meta">
+              <span className="origin">{s.origin}</span>
+              <span aria-hidden="true">·</span>
+              <span>
                 {enforcing}/{rows.length} enforcing
               </span>
-            </div>
+            </p>
             {rows.length === 0 ? (
               <p className="muted" style={{ fontSize: 13 }}>
                 No traffic seen yet. Finish the <a href={`/s/${s.id}/setup`}>setup</a> and send
