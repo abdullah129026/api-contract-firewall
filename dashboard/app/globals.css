@@ -475,7 +475,7 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 /* Landing page: standalone marketing, same Cloudflare light language.
    Scoped under .landing so dashboard chrome is untouched. */
 .landing {
-  max-width: 960px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 0 32px 96px;
 }
@@ -505,30 +505,57 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
   text-decoration: none;
 }
 .landing-nav > a:not(.btn):hover { color: var(--text-1); text-decoration: underline; }
-.hero { margin-bottom: 88px; }
-.hero h1 {
-  font-size: 44px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.12;
-  margin: 0 0 20px;
-  max-width: 20ch;
+/* Hero: solid orange block, white type. The cloudflare.com marketing
+   beat: one big confident statement, two CTAs, rounded corners. */
+.hero-block {
+  background: var(--brand);
+  border-radius: 20px;
+  padding: 76px 64px;
+  margin-bottom: 104px;
+  color: #fff;
+  overflow: hidden;
 }
-.hero > p {
-  font-size: 17px;
-  color: var(--text-2);
+.hero-kicker {
+  margin: 0 0 18px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.hero-block h1 {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 0 0 24px;
+  max-width: 22ch;
+  color: #fff;
+}
+.hero-sub {
+  font-size: 18px;
   line-height: 1.6;
-  margin: 0 0 32px;
-  max-width: 62ch;
+  margin: 0 0 36px;
+  max-width: 58ch;
+  color: rgba(255, 255, 255, 0.9);
 }
 .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
-.hero-ctas .btn { padding: 10px 20px; font-size: 14px; }
-.landing-section { margin-bottom: 88px; }
+.hero-ctas .btn { padding: 12px 24px; font-size: 15px; border-radius: 8px; }
+/* White and outline-white buttons live on the orange block only. */
+.btn-white { background: #fff; border-color: #fff; color: var(--text-1); }
+.btn-white:hover { background: #f2f4f7; border-color: #f2f4f7; }
+.btn-outline-white {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #fff;
+}
+.btn-outline-white:hover { border-color: #fff; background: rgba(255, 255, 255, 0.12); }
+.landing-section { margin-bottom: 104px; }
 .landing-section > h2 {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 28px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin: 0 0 12px;
 }
 .landing-lede {
   font-size: 15px;
@@ -573,6 +600,49 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 .landing-features li:nth-child(n+3) { border-top: 1px solid var(--line); }
 .landing-features h3 { margin: 0 0 6px; font-size: 14px; font-weight: 650; }
 .landing-features p { margin: 0; color: var(--text-2); font-size: 13px; line-height: 1.6; }
+/* Feature cards lift on hover. Subtle, one property, no shadow. */
+.landing-features li { transition: background-color 160ms ease, transform 160ms ease; }
+.landing-features li:hover { background: #fafbfc; transform: translateY(-3px); }
+
+/* Proxy flow diagram: three nodes, dots travel client -> proxy -> api
+   on a loop. Pure CSS, aria-hidden decoration for the steps list. */
+.proxy-flow { margin: 8px 0 40px; padding: 28px 24px 20px; background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.proxy-track { position: relative; height: 2px; background: var(--line); border-radius: 2px; margin: 0 12px; }
+.proxy-dot {
+  position: absolute;
+  top: -4px; left: 0;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: proxy-dot-travel 2.4s linear infinite;
+}
+.proxy-dot.d2 { animation-delay: 0.8s; }
+.proxy-dot.d3 { animation-delay: 1.6s; }
+@keyframes proxy-dot-travel {
+  from { left: 0; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  to { left: calc(100% - 10px); opacity: 0; }
+}
+.proxy-nodes { display: flex; justify-content: space-between; margin-top: 14px; }
+.proxy-node {
+  font-size: 13px; font-weight: 550; color: var(--text-2);
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 16px;
+}
+.proxy-node.hot { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 650; }
+
+/* Scroll reveal: sections rise into view once. */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity 600ms ease, transform 600ms ease; }
+.reveal.is-visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .proxy-dot { animation: none; opacity: 0; }
+  .landing-features li:hover { transform: none; }
+  .btn:active { transform: none; }
+}
 .waitlist-form { display: flex; gap: 10px; max-width: 480px; flex-wrap: wrap; }
 .waitlist-form input[type="email"] {
   flex: 1;
@@ -611,7 +681,9 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
   white-space: nowrap;
 }
 @media (max-width: 640px) {
-  .hero h1 { font-size: 32px; }
+  .hero-block { padding: 48px 28px; border-radius: 16px; }
+  .hero-block h1 { font-size: 34px; }
+  .landing-section > h2 { font-size: 26px; }
   .landing-features { grid-template-columns: 1fr; }
   .landing-features li:nth-child(odd) { border-right: none; }
   .landing-features li:nth-child(n+2) { border-top: 1px solid var(--line); }
