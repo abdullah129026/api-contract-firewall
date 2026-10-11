@@ -125,6 +125,7 @@ export async function handleRequest(request, env) {
       );
       out.supabase_status = res.status;
       out.supabase_ok = res.ok;
+      out.supabase_body = (await res.text()).slice(0, 300);
     } catch (e) {
       out.fetch_error = String(e).slice(0, 140);
     }
