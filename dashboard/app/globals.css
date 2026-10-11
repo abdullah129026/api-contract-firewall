@@ -1,19 +1,29 @@
-/* API Contract Firewall dashboard theme. Tokens are locked (see PLAN.md):
-   dark-first dev tool, surfaces #0a0a0a -> #111 -> #1a1a1a, hairline
-   borders, 6px/8px radii, neutral text, one emerald accent. Bans: gradients,
-   shadows, emoji, card grids for dense data, "welcome" copy, illustrations. */
+/* API Contract Firewall dashboard theme, second pass (2026-10-11).
+   The user pointed at dash.cloudflare.com and asked for that language, so
+   the PLAN.md dark lock is retired. Light enterprise: white surfaces on a
+   light gray page, Cloudflare orange (#f6821f) as the brand accent for
+   primary actions and active states only, semantic green/red/amber for
+   status. Bans kept: no gradients, no shadows, no emoji, no card grids
+   for dense data, no illustrations. */
 
 :root {
-  --bg-0: #0a0a0a;
-  --bg-1: #111111;
-  --bg-2: #1a1a1a;
-  --line: rgba(255, 255, 255, 0.08);
-  --text-1: #fafafa;
-  --text-2: #a3a3a3;
-  --text-3: #737373;
-  --accent: #3ecf8e;
-  --red: #f87171;
-  --amber: #fbbf24;
+  --bg-0: #f2f4f7;          /* page */
+  --bg-1: #ffffff;          /* surfaces: sidebar, cards, tables, panels */
+  --bg-2: #eaedf1;          /* hover fills, subtle wells */
+  --line: #dfe3e8;          /* hairline borders */
+  --text-1: #1d2126;
+  --text-2: #5b6470;
+  --text-3: #8a93a0;
+  --brand: #f6821f;         /* Cloudflare orange: primary actions, active nav */
+  --brand-dark: #e56f0e;    /* brand hover */
+  --accent: #0e9f6e;        /* healthy green: enforcing, passing, live */
+  --red: #d92d20;           /* breaking */
+  --amber: #b54708;         /* warning / learning */
+  --green-soft: #e7f6f0;
+  --green-text: #067647;
+  --red-soft: #fdeceb;
+  --red-text: #b42318;
+  --amber-soft: #fdf3e3;
   --radius-sm: 6px;
   --radius-md: 8px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -26,75 +36,115 @@ html, body {
   padding: 0;
   background: var(--bg-0);
   color: var(--text-1);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-::selection { background: rgba(62, 207, 142, 0.28); }
+::selection { background: rgba(246, 130, 31, 0.25); }
 
-/* Visible keyboard focus. Inputs already signal focus with an accent
+/* Visible keyboard focus. Inputs already signal focus with a brand
    border, so they are left out here. */
 a:focus-visible, button:focus-visible, select:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
 /* Content links get an affordance on hover; buttons opt out. */
 .main a:not(.btn):hover { text-decoration: underline; text-underline-offset: 3px; }
 
-/* Sidebar */
+/* Sidebar: white, grouped sections under small-caps headers. */
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
   width: 248px;
   background: var(--bg-1);
   border-right: 1px solid var(--line);
-  padding: 20px 16px;
+  padding: 20px 12px;
   overflow-y: auto;
 }
 .brand {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-1);
-  font-weight: 650;
+  font-weight: 700;
   font-size: 15px;
   letter-spacing: -0.01em;
   text-decoration: none;
   margin-bottom: 24px;
+  padding: 0 8px;
 }
-.brand .dot { color: var(--accent); }
+.brand-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--brand);
+}
 .brand:hover { color: var(--text-1); }
 .nav-label {
   color: var(--text-3);
   font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin: 0 0 8px 8px;
+  margin: 0 0 6px 12px;
 }
 .nav a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--text-2);
   text-decoration: none;
-  padding: 7px 8px;
+  padding: 7px 12px;
   border-radius: var(--radius-sm);
   transition: background-color 120ms ease, color 120ms ease;
 }
+.nav a svg { flex: none; }
 .nav a:hover { background: var(--bg-2); color: var(--text-1); text-decoration: none; }
-/* Active page: filled row plus an accent edge. The edge is an inset
-   hairline, not a shadow. */
+/* Active page: soft orange fill plus a brand edge. */
 .nav a.active {
-  background: var(--bg-2);
+  background: #fdf1e2;
   color: var(--text-1);
-  box-shadow: inset 2px 0 0 var(--accent);
+  font-weight: 550;
+  box-shadow: inset 2px 0 0 var(--brand);
 }
-.nav-service { margin-top: 12px; }
-.nav-service > a { color: var(--text-1); font-weight: 550; }
-.nav-sub a { padding-left: 20px; font-size: 13px; }
+.nav-service { margin-top: 14px; }
+.nav-service > a { color: var(--text-1); font-weight: 600; }
+.nav-sub a { padding-left: 36px; font-size: 13px; }
+
+/* Top bar: white, sticky, one job: global search into the violations
+   stream. Plain GET form, no client JS needed. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 44px;
+  margin: 0 -44px 28px;
+}
+.topbar-search { display: flex; max-width: 420px; position: relative; }
+.topbar-search svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  pointer-events: none;
+}
+.topbar-search input {
+  background: var(--bg-0);
+  border: 1px solid transparent;
+  padding-left: 34px;
+}
+.topbar-search input:focus { background: var(--bg-1); border-color: var(--brand); }
 
 /* Main */
-.main { margin-left: 248px; padding: 36px 44px 64px; max-width: 1180px; }
+.main { margin-left: 248px; padding: 0 44px 64px; max-width: 1224px; }
 .page-title {
   font-size: 24px;
   font-weight: 700;
@@ -136,7 +186,7 @@ a:focus-visible, button:focus-visible, select:focus-visible {
 }
 .service-meta .origin { font-family: var(--mono); }
 
-/* Tables (dense data, never card grids) */
+/* Tables: white, light header row, dense. Never card grids. */
 table.data {
   width: 100%;
   border-collapse: collapse;
@@ -154,9 +204,9 @@ table.data th {
   letter-spacing: 0.06em;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
+  background: #f8fafc;
   position: sticky;
   top: 0;
-  background: var(--bg-1);
   z-index: 1;
   white-space: nowrap;
 }
@@ -166,7 +216,7 @@ table.data td {
   vertical-align: middle;
 }
 table.data tbody tr { transition: background-color 120ms ease; }
-table.data tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+table.data tbody tr:hover { background: #f6f8fa; }
 table.data tr:last-child td { border-bottom: none; }
 /* Numeric columns: right-aligned with tabular figures so latency and
    counts line up down the column. Compose with .mono. */
@@ -181,7 +231,8 @@ table.data tr:last-child td { border-bottom: none; }
 }
 .muted { color: var(--text-3); }
 
-/* Status dots and pills: color lives on badges, never on body text */
+/* Status dots and pills: color lives on badges, never on body text.
+   Pills are soft enterprise badges: tinted bg, darker text. */
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
 .dot-enforcing { background: var(--accent); }
 .dot-learning { background: var(--amber); }
@@ -196,19 +247,21 @@ table.data tr:last-child td { border-bottom: none; }
   font-weight: 600;
   padding: 3px 10px;
   border-radius: 999px;
-  border: 1px solid var(--line);
+  background: var(--bg-2);
   color: var(--text-2);
 }
 .pill .dot { margin-right: 0; }
-.pill-pass { color: var(--accent); }
-.pill-block { color: var(--red); }
+.pill-pass { background: var(--green-soft); color: var(--green-text); }
+.pill-pass .dot { background: var(--accent); }
+.pill-block { background: var(--red-soft); color: var(--red-text); }
+.pill-block .dot { background: var(--red); }
 
 /* Buttons and forms */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-2);
+  background: var(--bg-1);
   color: var(--text-1);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -217,16 +270,17 @@ table.data tr:last-child td { border-bottom: none; }
   font-weight: 550;
   cursor: pointer;
   text-decoration: none;
-  transition: border-color 120ms ease, background-color 120ms ease, filter 120ms ease;
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
-.btn:hover { border-color: rgba(255, 255, 255, 0.2); text-decoration: none; }
+.btn:hover { border-color: #c3cad3; text-decoration: none; }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #06130c; }
-.btn-primary:hover { border-color: var(--accent); filter: brightness(1.08); }
+/* Primary actions wear the brand orange, used sparingly. */
+.btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn:disabled:active { transform: none; }
 input[type="text"], input[type="password"] {
-  background: var(--bg-0);
+  background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   color: var(--text-1);
@@ -234,22 +288,24 @@ input[type="text"], input[type="password"] {
   font-size: 13px;
   width: 100%;
 }
-input:focus { outline: none; border-color: var(--accent); }
+input:focus { outline: none; border-color: var(--brand); }
 .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
 .form-row input { flex: 1; }
 label.field { display: block; margin-bottom: 14px; }
 label.field span { display: block; color: var(--text-2); font-size: 12px; margin-bottom: 6px; }
-.error { color: var(--red); font-size: 13px; margin: 8px 0; }
+.error { color: var(--red-text); font-size: 13px; margin: 8px 0; }
 
-/* Code blocks */
+/* Code blocks stay dark on the light theme, like docs. Intentional
+   contrast, keeps mono readable. */
 .codeblock {
   position: relative;
-  background: var(--bg-0);
-  border: 1px solid var(--line);
+  background: #15181d;
+  border: 1px solid #2a2f36;
   border-radius: var(--radius-md);
   padding: 14px 16px;
   font-family: var(--mono);
   font-size: 12.5px;
+  color: #e8eaed;
   overflow-x: auto;
   white-space: pre;
 }
@@ -274,7 +330,7 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
   gap: 14px;
   background: var(--bg-1);
   border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
+  border-left: 3px solid var(--accent);
   border-radius: var(--radius-md);
   padding: 16px 18px;
   margin-bottom: 28px;
@@ -315,11 +371,12 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 .guide-num {
   flex: none;
   width: 26px; height: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--line);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; color: var(--text-2);
   margin-top: 2px;
+  background: var(--bg-1);
 }
 .guide-step.done .guide-num { border-color: var(--accent); color: var(--accent); }
 .guide-step.todo { opacity: 0.55; }
@@ -332,8 +389,7 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 .crumbs a { color: inherit; }
 .crumbs .sep { margin: 0 6px; }
 
-/* Empty state: text and an action, no illustration. Solid border reads as
-   a designed panel; dashed reads as a placeholder. */
+/* Empty state: text and an action, no illustration. */
 .empty {
   text-align: center;
   padding: 72px 24px;
@@ -349,11 +405,11 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
 
 .result-line { font-family: var(--mono); font-size: 12.5px; margin-top: 10px; }
-.result-ok { color: var(--accent); }
-.result-bad { color: var(--red); }
+.result-ok { color: var(--green-text); }
+.result-bad { color: var(--red-text); }
 
 /* Warning pill (severity): color lives on the badge, never on body text */
-.pill-warn { color: var(--amber); }
+.pill-warn { background: var(--amber-soft); color: var(--amber); }
 
 /* Violation stream filters: plain GET form */
 .filter-form {
@@ -377,7 +433,7 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
   padding: 8px 12px;
   font-size: 13px;
 }
-.filter-form select:focus { outline: none; border-color: var(--accent); }
+.filter-form select:focus { outline: none; border-color: var(--brand); }
 .filter-form .filter-q { flex: 1; max-width: 320px; }
 .filter-form input[type="text"] { width: 100%; }
 
@@ -416,7 +472,7 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 /* Loading skeletons: static blocks only. Shimmer needs a gradient,
    which the theme bans. */
 .skeleton {
-  background: var(--bg-1);
+  background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
