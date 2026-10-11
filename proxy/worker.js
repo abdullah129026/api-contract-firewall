@@ -101,6 +101,36 @@ function jsonError(status, error, hint) {
 
 export async function handleRequest(request, env) {
   const startedAt = Date.now();
+  const url = new URL(request.url);
+
+  // Temporary debug endpoint for the 2026-10-11 key-validation outage.
+  // Reports whether the worker can reach Supabase; exposes only the key
+  // length and URL prefix, never secret values. Remove after diagnosing.
+  if (url.pathname === '/__debug-supabase') {
+    const out = {
+      url_set: !!env.SUPABASE_URL,
+      url_prefix: (env.SUPABASE_URL || '').slice(0, 32),
+      key_set: !!env.SUPABASE_SERVICE_KEY,
+      key_len: (env.SUPABASE_SERVICE_KEY || '').length,
+    };
+    try {
+      const res = await fetch(
+        `${(env.SUPABASE_URL || '').replace(/\/$/, '')}/rest/v1/api_keys?key_hash=eq.${'0'.repeat(64)}&select=service:services(id,name,origin)&limit=1`,
+        {
+          headers: {
+            apikey: env.SUPABASE_SERVICE_KEY || '',
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY || ''}`,
+          },
+        }
+      );
+      out.supabase_status = res.status;
+      out.supabase_ok = res.ok;
+    } catch (e) {
+      out.fetch_error = String(e).slice(0, 140);
+    }
+    return Response.json(out);
+  }
+
   const apiKey = request.headers.get('x-api-key');
 
   if (!apiKey) {
@@ -112,7 +142,6 @@ export async function handleRequest(request, env) {
     return jsonError(401, 'invalid_api_key', 'No service is registered for this key.');
   }
 
-  const url = new URL(request.url);
   const target = buildTargetUrl(service.origin, url);
 
   const headers = new Headers(request.headers);
