@@ -1,5 +1,7 @@
-// Services overview (home page): one endpoints table per service with
-// gate status pills, plus service registration.
+// Services overview (home page): answers job 1, "is anything broken?"
+// The system banner states the verdict first; service rows follow.
+// With no services yet, the page is a guided 3-step flow instead of a
+// bare form.
 import { dbFromEnv } from '../lib/db.js';
 import { endpointRows } from '../lib/overview.js';
 import { EmptyState, GatePill } from '../components/ui.js';
@@ -7,6 +9,102 @@ import EndpointsTable from '../components/EndpointsTable.js';
 import NewServiceForm from '../components/NewServiceForm.js';
 
 export const dynamic = 'force-dynamic';
+
+// The verdict for every service, computed once so the banner and the
+// rows agree.
+async function serviceSummaries(db, services) {
+  return Promise.all(
+    services.map(async (s) => {
+      const rows = await endpointRows(db, s.id);
+      return {
+        service: s,
+        rows,
+        openBreaking: rows.reduce((n, r) => n + r.breaking, 0),
+        enforcing: rows.filter((r) => r.state === 'ENFORCING').length,
+      };
+    })
+  );
+}
+
+function SystemBanner({ summaries }) {
+  const openBreaking = summaries.reduce((n, s) => n + s.openBreaking, 0);
+  const enforcing = summaries.reduce((n, s) => n + s.enforcing, 0);
+  if (openBreaking > 0) {
+    return (
+      <div className="status-banner alert" role="alert">
+        <div>
+          <p className="verdict">
+            {openBreaking} contract change{openBreaking === 1 ? '' : 's'} need
+            {openBreaking === 1 ? 's' : ''} a decision
+          </p>
+          <p className="detail">
+            Deploys are blocked until each one is approved or dismissed.
+          </p>
+        </div>
+        <div className="action">
+          <a className="btn btn-primary" href="/violations?status=open">
+            Review now
+          </a>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="status-banner">
+      <div>
+        <p className="verdict">All contracts holding</p>
+        <p className="detail">
+          {summaries.length} service{summaries.length === 1 ? '' : 's'} ·{' '}
+          {enforcing} endpoint{enforcing === 1 ? '' : 's'} enforcing
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// First run: three steps, each showing its own state. Step 1 holds the
+// form; steps 2 and 3 unlock once the service exists.
+function FirstRun() {
+  return (
+    <>
+      <h1 className="page-title">Connect your first API</h1>
+      <p className="page-sub">
+        Three steps. The proxy learns your API's contract from real traffic,
+        then guards it.
+      </p>
+      <div className="guide">
+        <div className="guide-step current">
+          <div className="guide-num">1</div>
+          <div className="guide-body">
+            <h3>Name your API</h3>
+            <p>Tell the dashboard what to watch. You get an API key for it.</p>
+            <NewServiceForm />
+          </div>
+        </div>
+        <div className="guide-step todo">
+          <div className="guide-num">2</div>
+          <div className="guide-body">
+            <h3>Send traffic through the proxy</h3>
+            <p>
+              After creating the service, its setup page gives you the proxy
+              URL, a key, and a test button.
+            </p>
+          </div>
+        </div>
+        <div className="guide-step todo">
+          <div className="guide-num">3</div>
+          <div className="guide-body">
+            <h3>Watch it learn</h3>
+            <p>
+              The first requests teach the contract. After 100 samples (or
+              your confirmation) the firewall starts enforcing it.
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default async function Overview() {
   const db = dbFromEnv();
@@ -29,58 +127,53 @@ export default async function Overview() {
     );
   }
 
+  if (services.length === 0) return <FirstRun />;
+
+  const summaries = await serviceSummaries(db, services);
+
   return (
     <>
       <h1 className="page-title">Services</h1>
       <p className="page-sub">
-        Contract health per API. Steady state lives here; violations get their own stream.
+        Is anything broken? This page answers that first.
       </p>
 
-      {services.length === 0 && (
-        <EmptyState
-          title="No services yet"
-          body="Point the proxy at your first API and it starts learning the contract."
-          action={<NewServiceForm />}
-        />
-      )}
+      <SystemBanner summaries={summaries} />
 
-      {services.map(async (s) => {
-        const rows = await endpointRows(db, s.id);
-        const openBreaking = rows.reduce((n, r) => n + r.breaking, 0);
-        const enforcing = rows.filter((r) => r.state === 'ENFORCING').length;
-        return (
-          <section key={s.id}>
-            <div className="service-head">
-              <h2>
-                <a href={`/s/${s.id}`}>{s.name}</a>
-              </h2>
-              <GatePill openBreaking={openBreaking} />
-            </div>
-            <p className="service-meta">
-              <span className="origin">{s.origin}</span>
-              <span aria-hidden="true">·</span>
-              <span>
-                {enforcing}/{rows.length} enforcing
-              </span>
-            </p>
-            {rows.length === 0 ? (
-              <p className="muted" style={{ fontSize: 13 }}>
-                No traffic seen yet. Finish the <a href={`/s/${s.id}/setup`}>setup</a> and send
-                requests through the proxy.
+      {summaries.map(({ service: s, rows, openBreaking, enforcing }) => (
+        <section key={s.id}>
+          <div className="service-head">
+            <h2>
+              <a href={`/s/${s.id}`}>{s.name}</a>
+            </h2>
+            <GatePill openBreaking={openBreaking} />
+          </div>
+          <p className="service-meta">
+            <span className="origin">{s.origin}</span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {enforcing}/{rows.length} enforcing
+            </span>
+          </p>
+          {rows.length === 0 ? (
+            <div className="panel">
+              <h3>No traffic yet</h3>
+              <p>
+                The proxy has not reported any requests for this service.
+                Finish setup and send traffic to start learning the contract.
               </p>
-            ) : (
-              <EndpointsTable rows={rows} serviceId={s.id} />
-            )}
-          </section>
-        );
-      })}
+              <a className="btn btn-primary" href={`/s/${s.id}/setup`}>
+                Finish setup
+              </a>
+            </div>
+          ) : (
+            <EndpointsTable rows={rows} serviceId={s.id} />
+          )}
+        </section>
+      ))}
 
-      {services.length > 0 && (
-        <>
-          <h3 className="section-title">Add a service</h3>
-          <NewServiceForm />
-        </>
-      )}
+      <h3 className="section-title">Add another service</h3>
+      <NewServiceForm />
     </>
   );
 }
