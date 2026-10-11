@@ -3,6 +3,7 @@
 // time instead of failing the build.
 import './globals.css';
 import { dbFromEnv } from '../lib/db.js';
+import NavLinks from '../components/NavLinks.js';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'API Contract Firewall' };
@@ -19,20 +20,7 @@ export default async function RootLayout({ children }) {
             <span className="dot dot-enforcing" style={{ marginRight: 6 }} />
             Contract Firewall
           </a>
-          <nav className="nav">
-            <p className="nav-label">Monitor</p>
-            <a href="/">Services</a>
-            <a href="/violations">Violations</a>
-            {services.map((s) => (
-              <div className="nav-service" key={s.id}>
-                <a href={`/s/${s.id}`}>{s.name}</a>
-                <div className="nav-sub">
-                  <a href={`/s/${s.id}/setup`}>Setup</a>
-                  <a href={`/s/${s.id}/gate`}>Gate</a>
-                </div>
-              </div>
-            ))}
-          </nav>
+          <NavLinks services={services.map((s) => ({ id: s.id, name: s.name }))} />
         </aside>
         <main className="main">{children}</main>
       </body>
