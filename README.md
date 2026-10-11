@@ -28,7 +28,12 @@ client ──(x-api-key)──► ┌──────────────�
   to the registered origin, returns `x-acf-proxy-ms` overhead (<10ms budget).
 - `origin/` — tiny demo API (`/users`, `/orders`) with a scripted breaking
   change (`scripts/flip-id.js`) so anyone can try the product end to end.
-- Dashboard + analyzer + CI gate: next milestones (see PLAN.md §5).
+- `dashboard/` — Next.js 16 UI: service overview, triage stream, endpoint
+  detail with schema timeline, CI gate screen.
+- `supabase/` — schema + migrations (run in the Supabase SQL editor).
+- `scripts/e2e-demo.mjs` — scripted demo against a deployed stack:
+  register -> baseline -> enforcing -> break -> violation -> blocked gate ->
+  approve -> new baseline -> pass.
 
 ## Quickstart (local)
 
@@ -46,6 +51,30 @@ node test/e2e-local.mjs   # needs SERVICES_JSON mapping key -> origin :3001
 cd ../origin
 node scripts/flip-id.js --break
 BREAK_CONTRACT=1 node server.js                     # id -> _id in all responses
+```
+
+## Deploy (free tiers)
+
+Both pieces deploy from this repo. The one secret the deployer creates is
+`INGEST_SECRET`: a long random string (`openssl rand -base64 32`) set as a
+worker secret and as a Vercel env var, same value in both places. The proxy
+signs ingest calls with it; the dashboard rejects calls without it.
+
+**Proxy** (Cloudflare Workers): `cd proxy`, `npx wrangler login`, then
+`npx wrangler secret put` for `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`,
+`INGEST_URL` (`https://<dashboard>/api/ingest`), `INGEST_SECRET`, then
+`npx wrangler deploy`. See `proxy/README.md` for the exact commands.
+
+**Dashboard** (Vercel): import the repo, set the root directory to
+`dashboard`, and add env vars `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`,
+`INGEST_SECRET`, and `NEXT_PUBLIC_PROXY_URL` (the worker URL). See
+`dashboard/.env.example`.
+
+Then verify the full loop with the demo origin hosted somewhere public:
+
+```bash
+DASHBOARD_URL=https://<dashboard> PROXY_URL=https://<worker> \
+  DEMO_ORIGIN=https://<public-demo-origin> node scripts/e2e-demo.mjs
 ```
 
 ## Known limitations (MVP)
