@@ -81,7 +81,7 @@ export function shouldSample(sampler, endpoint, now = Date.now()) {
   const minute = Math.floor(now / 60_000);
   let entry = sampler.get(endpoint);
   if (!entry || entry.minute !== minute) {
-    entry = { minute, count: 0, sampled: 0 };
+    entry = { minute, sampled: 0 };
     sampler.set(endpoint, entry);
     // The sampler lives as long as the Worker isolate, so drop endpoint
     // windows that already rolled over. Without this, one map entry
@@ -90,10 +90,12 @@ export function shouldSample(sampler, endpoint, now = Date.now()) {
       if (e.minute < minute) sampler.delete(key);
     }
   }
-  entry.count += 1;
   if (entry.sampled >= MAX_SAMPLES_PER_MINUTE) return false;
-  // 1-in-10: sample when the request counter crosses an N boundary.
-  if (entry.count % SAMPLE_EVERY_N === 0) {
+  // 1-in-10, probabilistic. A per-isolate request counter fragments across
+  // Cloudflare's many isolates (no isolate sees enough requests for its
+  // counter to reach N), collapsing the sample rate in production. A coin
+  // flip per request holds the rate on any number of isolates.
+  if (Math.random() < 1 / SAMPLE_EVERY_N) {
     entry.sampled += 1;
     return true;
   }

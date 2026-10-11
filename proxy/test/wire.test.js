@@ -42,24 +42,32 @@ function fakeCtx() {
 
 test('10th request ships a masked, templated sample to INGEST_URL', async () => {
   __resetCaptureState();
-  await runWithFakeFetch(null, async (seen) => {
-    const ctx = fakeCtx();
-    for (let i = 0; i < 10; i++) {
-      const res = await worker.fetch(req('/users/42', { headers: { 'x-api-key': KEY } }), env(), ctx);
-      assert.equal(res.status, 200, 'client response unaffected by capture');
-      assert.ok((await res.text()).includes('a@b.com'), 'response body passes through raw');
-    }
-    await ctx.settled();
-    assert.equal(seen.ingest.length, 1, 'exactly 1-in-10 requests ships a sample');
-    const sample = JSON.parse(seen.ingest[0].init.body);
-    assert.equal(sample.method, 'GET');
-    assert.equal(sample.path, '/users/{id}', 'path templated before shipping');
-    assert.equal(sample.status, 200);
-    assert.equal(sample.body.id, 7);
-    assert.equal(sample.body.email, MASKED, 'PII masked before storage');
-    assert.equal(sample.service, 'demo', 'sample carries the service name');
-    assert.equal(getDroppedSamples(), 0);
-  });
+  // Sample exactly the first request.
+  const real = Math.random;
+  let n = 0;
+  Math.random = () => (n++ === 0 ? 0.05 : 0.5);
+  try {
+    await runWithFakeFetch(null, async (seen) => {
+      const ctx = fakeCtx();
+      for (let i = 0; i < 10; i++) {
+        const res = await worker.fetch(req('/users/42', { headers: { 'x-api-key': KEY } }), env(), ctx);
+        assert.equal(res.status, 200, 'client response unaffected by capture');
+        assert.ok((await res.text()).includes('a@b.com'), 'response body passes through raw');
+      }
+      await ctx.settled();
+      assert.equal(seen.ingest.length, 1, 'exactly 1-in-10 requests ships a sample');
+      const sample = JSON.parse(seen.ingest[0].init.body);
+      assert.equal(sample.method, 'GET');
+      assert.equal(sample.path, '/users/{id}', 'path templated before shipping');
+      assert.equal(sample.status, 200);
+      assert.equal(sample.body.id, 7);
+      assert.equal(sample.body.email, MASKED, 'PII masked before storage');
+      assert.equal(sample.service, 'demo', 'sample carries the service name');
+      assert.equal(getDroppedSamples(), 0);
+    });
+  } finally {
+    Math.random = real;
+  }
 });
 
 test('unauthorized requests are not captured', async () => {
@@ -74,29 +82,44 @@ test('unauthorized requests are not captured', async () => {
 
 test('ingest failure increments dropped counter, client unaffected', async () => {
   __resetCaptureState();
-  await runWithFakeFetch(() => new Response('boom', { status: 500 }), async (seen) => {
-    const ctx = fakeCtx();
-    for (let i = 0; i < 10; i++) {
-      const res = await worker.fetch(req('/users/1', { headers: { 'x-api-key': KEY } }), env(), ctx);
-      assert.equal(res.status, 200);
-    }
-    await ctx.settled();
-    assert.equal(seen.ingest.length, 1);
-    assert.equal(getDroppedSamples(), 1);
-  });
+  // Sample exactly the first request.
+  const real = Math.random;
+  let n = 0;
+  Math.random = () => (n++ === 0 ? 0.05 : 0.5);
+  try {
+    await runWithFakeFetch(() => new Response('boom', { status: 500 }), async (seen) => {
+      const ctx = fakeCtx();
+      for (let i = 0; i < 10; i++) {
+        const res = await worker.fetch(req('/users/1', { headers: { 'x-api-key': KEY } }), env(), ctx);
+        assert.equal(res.status, 200);
+      }
+      await ctx.settled();
+      assert.equal(seen.ingest.length, 1);
+      assert.equal(getDroppedSamples(), 1);
+    });
+  } finally {
+    Math.random = real;
+  }
 });
 
 test('missing INGEST_URL drops the sample without throwing', async () => {
   __resetCaptureState();
-  await runWithFakeFetch(null, async (seen) => {
-    for (let i = 0; i < 10; i++) {
-      await captureAndShip(
-        req('/users/1'),
-        new Response('[]', { headers: { 'content-type': 'application/json' } }),
-        { ...env(), INGEST_URL: undefined },
-        { durationMs: 5, proxyMs: 1 }
-      ).catch(() => assert.fail('captureAndShip must never throw'));
-    }
-    assert.equal(getDroppedSamples(), 1, 'the one sampled request drops without a configured ingest');
-  });
+  const real = Math.random;
+  let n = 0;
+  Math.random = () => (n++ === 0 ? 0.05 : 0.5);
+  try {
+    await runWithFakeFetch(null, async (seen) => {
+      for (let i = 0; i < 10; i++) {
+        await captureAndShip(
+          req('/users/1'),
+          new Response('[]', { headers: { 'content-type': 'application/json' } }),
+          { ...env(), INGEST_URL: undefined },
+          { durationMs: 5, proxyMs: 1 }
+        ).catch(() => assert.fail('captureAndShip must never throw'));
+      }
+      assert.equal(getDroppedSamples(), 1, 'the one sampled request drops without a configured ingest');
+    });
+  } finally {
+    Math.random = real;
+  }
 });

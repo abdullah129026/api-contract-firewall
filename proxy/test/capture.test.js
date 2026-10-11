@@ -69,17 +69,47 @@ test('shouldSample keeps 1-in-10 per endpoint and caps at 200/min', () => {
   const sampler = createSampler();
   let sampled = 0;
   const base = Date.now();
-  for (let i = 1; i <= 3000; i++) {
-    if (shouldSample(sampler, 'GET /users/{id}', base + i)) sampled += 1;
+  // Stub random for a deterministic 1-in-10.
+  const real = Math.random;
+  let n = 0;
+  Math.random = () => (n++ % 10 === 0 ? 0.05 : 0.5);
+  try {
+    for (let i = 1; i <= 3000; i++) {
+      if (shouldSample(sampler, 'GET /users/{id}', base + i)) sampled += 1;
+    }
+  } finally {
+    Math.random = real;
   }
   assert.equal(sampled, 200, 'capped at 200 per minute window');
+});
+
+test('shouldSample holds ~1-in-10 with real randomness', () => {
+  const sampler = createSampler();
+  // Spread across minutes to avoid the cap: 10 minutes x 1000 requests.
+  let sampled = 0;
+  const base = Math.floor(Date.now() / 60_000) * 60_000;
+  for (let m = 0; m < 10; m++) {
+    for (let i = 0; i < 1000; i++) {
+      if (shouldSample(sampler, 'GET /a', base + m * 60_000 + i)) sampled += 1;
+    }
+  }
+  // 10,000 requests at 10%: expect ~1000; +/-300 is >10 sigma.
+  assert.ok(sampled > 700 && sampled < 1300, `expected ~1000 samples, got ${sampled}`);
 });
 
 test('shouldSample is per-endpoint', () => {
   const sampler = createSampler();
   const now = Date.now();
-  for (let i = 1; i <= 10; i++) shouldSample(sampler, 'GET /a', now + i);
-  assert.equal(shouldSample(sampler, 'GET /b', now + 100), false, 'first /b request is not sampled');
+  const real = Math.random;
+  Math.random = () => 0.05; // always sample
+  try {
+    for (let i = 1; i <= 10; i++) shouldSample(sampler, 'GET /a', now + i);
+    assert.equal(shouldSample(sampler, 'GET /b', now + 100), true, '/b samples on its own window');
+    assert.equal(sampler.get('GET /a').sampled, 10);
+    assert.equal(sampler.get('GET /b').sampled, 1);
+  } finally {
+    Math.random = real;
+  }
 });
 
 test('buildSample masks PII in the body', () => {
@@ -164,18 +194,25 @@ test('maskSensitive redacts variant key spellings at any depth', () => {
 test('shouldSample resumes after the minute window rolls over', () => {
   const sampler = createSampler();
   const minute = Math.floor(1_700_000_000_000 / 60_000) * 60_000;
+  const real = Math.random;
+  let n = 0;
+  Math.random = () => (n++ % 10 === 0 ? 0.05 : 0.5);
   let sampled = 0;
-  for (let i = 1; i <= 3000; i++) {
-    if (shouldSample(sampler, 'GET /a', minute + i)) sampled += 1;
+  try {
+    for (let i = 1; i <= 3000; i++) {
+      if (shouldSample(sampler, 'GET /a', minute + i)) sampled += 1;
+    }
+    assert.equal(sampled, 200, 'capped within the minute');
+    // Next minute: the cap lifts and 1-in-10 sampling resumes.
+    sampled = 0;
+    const next = minute + 60_000;
+    for (let i = 1; i <= 100; i++) {
+      if (shouldSample(sampler, 'GET /a', next + i)) sampled += 1;
+    }
+    assert.equal(sampled, 10, 'sampling resumes in the new window');
+  } finally {
+    Math.random = real;
   }
-  assert.equal(sampled, 200, 'capped within the minute');
-  // Next minute: the cap lifts and 1-in-10 sampling resumes.
-  sampled = 0;
-  const next = minute + 60_000;
-  for (let i = 1; i <= 100; i++) {
-    if (shouldSample(sampler, 'GET /a', next + i)) sampled += 1;
-  }
-  assert.equal(sampled, 10, 'sampling resumes in the new window');
 });
 
 test('shouldSample evicts rolled-over endpoint windows', () => {
