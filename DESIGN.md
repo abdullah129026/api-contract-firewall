@@ -79,6 +79,19 @@ evidence, action.
 - PagerDuty: the alert is the unit of work; every alert carries its
   severity, its evidence, and its acknowledge action together.
 
+## Visual language, second pass (2026-10-11)
+
+Abdullah looked at the dark dev-tool UI twice and called it generic. He
+pointed at dash.cloudflare.com as the reference, so the PLAN.md dark
+lock is retired. The new language: light enterprise. White surfaces on
+a light gray page, Cloudflare orange (#f6821f) as the brand accent for
+primary actions and active nav states only, semantic green/red/amber
+kept for status. Sidebar with grouped sections and small-caps headers,
+a slim top bar whose only job is global search into the violations
+stream (plain GET form, no JS). The point of view above is unchanged:
+it works in a light theme too. Quiet stays the default; trouble still
+earns the color.
+
 ## What this replaces
 
 The previous UI was built feature by feature with no composition: a
