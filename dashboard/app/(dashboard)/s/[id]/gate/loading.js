@@ -1,4 +1,4 @@
-// Loading state for the endpoint detail page.
+// Loading state for the CI gate page.
 import { PageSkeleton } from '../../../../../components/Skeleton.js';
 
 export default function Loading() {

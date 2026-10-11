@@ -1,5 +1,5 @@
 // Loading state for the violation stream.
-import { TableSkeleton } from '../../components/Skeleton.js';
+import { TableSkeleton } from '../../../components/Skeleton.js';
 
 export default function Loading() {
   return (

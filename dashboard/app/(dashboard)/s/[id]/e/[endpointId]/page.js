@@ -1,10 +1,10 @@
 // Endpoint detail: state, latency, the schema timeline with the
 // baseline marked, and the violations raised against this endpoint.
 import { notFound } from 'next/navigation';
-import { dbFromEnv } from '../../../../../lib/db.js';
-import { p50, p95 } from '../../../../../lib/stats.js';
-import { regressionCheck } from '../../../../../lib/latency.js';
-import { CodeBlock, EmptyState, RelativeTime, Sparkline, StatusDot } from '../../../../../components/ui.js';
+import { dbFromEnv } from '../../../../../../lib/db.js';
+import { p50, p95 } from '../../../../../../lib/stats.js';
+import { regressionCheck } from '../../../../../../lib/latency.js';
+import { CodeBlock, EmptyState, RelativeTime, Sparkline, StatusDot } from '../../../../../../components/ui.js';
 
 export const dynamic = 'force-dynamic';
 

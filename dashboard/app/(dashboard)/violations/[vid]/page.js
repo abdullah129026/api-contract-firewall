@@ -2,9 +2,9 @@
 // sits directly under the evidence and states the consequence before the
 // buttons, so approving is an informed act, not a guess.
 import { notFound } from 'next/navigation';
-import { dbFromEnv } from '../../../lib/db.js';
-import { CodeBlock, EmptyState, RelativeTime } from '../../../components/ui.js';
-import TriageButtons from '../../../components/TriageButtons.js';
+import { dbFromEnv } from '../../../../lib/db.js';
+import { CodeBlock, EmptyState, RelativeTime } from '../../../../components/ui.js';
+import TriageButtons from '../../../../components/TriageButtons.js';
 
 export const dynamic = 'force-dynamic';
 

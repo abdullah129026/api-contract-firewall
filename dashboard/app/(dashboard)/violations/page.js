@@ -3,9 +3,9 @@
 // as synthetic warning rows computed from each endpoint's latency series.
 // Filters are a plain GET form (no JS), so they survive a reload and stay
 // linkable.
-import { dbFromEnv } from '../../lib/db.js';
-import { regressionCheck } from '../../lib/latency.js';
-import { EmptyState, RelativeTime } from '../../components/ui.js';
+import { dbFromEnv } from '../../../lib/db.js';
+import { regressionCheck } from '../../../lib/latency.js';
+import { EmptyState, RelativeTime } from '../../../components/ui.js';
 
 export const dynamic = 'force-dynamic';
 

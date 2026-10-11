@@ -2,11 +2,11 @@
 // The system banner states the verdict first; service rows follow.
 // With no services yet, the page is a guided 3-step flow instead of a
 // bare form.
-import { dbFromEnv } from '../lib/db.js';
-import { endpointRows } from '../lib/overview.js';
-import { EmptyState, GatePill } from '../components/ui.js';
-import EndpointsTable from '../components/EndpointsTable.js';
-import NewServiceForm from '../components/NewServiceForm.js';
+import { dbFromEnv } from '../../lib/db.js';
+import { endpointRows } from '../../lib/overview.js';
+import { EmptyState, GatePill } from '../../components/ui.js';
+import EndpointsTable from '../../components/EndpointsTable.js';
+import NewServiceForm from '../../components/NewServiceForm.js';
 
 export const dynamic = 'force-dynamic';
 

@@ -4,11 +4,11 @@
 // The plaintext key is shown once at issuance and never stored; the key
 // table lists labels and hash fingerprints only.
 import { notFound } from 'next/navigation';
-import { dbFromEnv } from '../../../../lib/db.js';
-import { CodeBlock, EmptyState, RelativeTime } from '../../../../components/ui.js';
-import NewKeyButton from '../../../../components/NewKeyButton.js';
-import TestRequestButton from '../../../../components/TestRequestButton.js';
-import LiveTraffic from '../../../../components/LiveTraffic.js';
+import { dbFromEnv } from '../../../../../lib/db.js';
+import { CodeBlock, EmptyState, RelativeTime } from '../../../../../components/ui.js';
+import NewKeyButton from '../../../../../components/NewKeyButton.js';
+import TestRequestButton from '../../../../../components/TestRequestButton.js';
+import LiveTraffic from '../../../../../components/LiveTraffic.js';
 
 export const dynamic = 'force-dynamic';
 

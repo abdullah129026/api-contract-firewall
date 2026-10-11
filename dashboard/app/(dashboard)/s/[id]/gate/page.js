@@ -3,9 +3,9 @@
 // has open breaking violations; approving or dismissing them passes it again.
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
-import { dbFromEnv } from '../../../../lib/db.js';
-import { endpointRows } from '../../../../lib/overview.js';
-import { CodeBlock, EmptyState, RelativeTime } from '../../../../components/ui.js';
+import { dbFromEnv } from '../../../../../lib/db.js';
+import { endpointRows } from '../../../../../lib/overview.js';
+import { CodeBlock, EmptyState, RelativeTime } from '../../../../../components/ui.js';
 
 export const dynamic = 'force-dynamic';
 

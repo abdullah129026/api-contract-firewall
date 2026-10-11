@@ -1,9 +1,9 @@
 // Service detail: endpoints table plus gate status.
 import { notFound } from 'next/navigation';
-import { dbFromEnv } from '../../../lib/db.js';
-import { endpointRows } from '../../../lib/overview.js';
-import { EmptyState, GatePill } from '../../../components/ui.js';
-import EndpointsTable from '../../../components/EndpointsTable.js';
+import { dbFromEnv } from '../../../../lib/db.js';
+import { endpointRows } from '../../../../lib/overview.js';
+import { EmptyState, GatePill } from '../../../../components/ui.js';
+import EndpointsTable from '../../../../components/EndpointsTable.js';
 
 export const dynamic = 'force-dynamic';
 
