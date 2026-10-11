@@ -11,10 +11,9 @@ export default function EndpointsTable({ rows, serviceId }) {
           <th>Endpoint</th>
           <th>Status</th>
           <th>Last change</th>
-          <th>p95</th>
-          <th></th>
-          <th>Samples</th>
-          <th>Breaking</th>
+          <th className="num">p95</th>
+          <th className="num">Samples</th>
+          <th className="num">Breaking</th>
         </tr>
       </thead>
       <tbody>
@@ -36,21 +35,21 @@ export default function EndpointsTable({ rows, serviceId }) {
             <td>
               <RelativeTime at={r.lastChangeAt} />
             </td>
-            <td className="mono">
+            <td className="mono num">
               {r.p95 === null ? '--' : `${r.p95}ms`}
               {r.regression && r.regression.regressed && (
-                <div style={{ marginTop: 2 }}>
+                <div style={{ marginTop: 4 }}>
                   <span className="pill pill-warn" title="Recent p50 is over 2x the baseline window">
                     slow x{r.regression.ratio.toFixed(1)}
                   </span>
                 </div>
               )}
+              <div style={{ marginTop: 6 }}>
+                <Sparkline values={r.latencies} />
+              </div>
             </td>
-            <td>
-              <Sparkline values={r.latencies} />
-            </td>
-            <td className="mono">{r.sampleCount}</td>
-            <td>
+            <td className="mono num">{r.sampleCount}</td>
+            <td className="num">
               {r.breaking > 0 ? (
                 <a href={`/violations?status=open&endpoint=${r.id}`} className="pill pill-block">
                   <span className="dot" style={{ background: 'var(--red)' }} />
