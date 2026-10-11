@@ -255,7 +255,7 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 }
 .codeblock .btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; font-size: 12px; }
 
-/* Panels and steps */
+/* Panels */
 .panel {
   background: var(--bg-1);
   border: 1px solid var(--line);
@@ -265,17 +265,72 @@ label.field span { display: block; color: var(--text-2); font-size: 12px; margin
 }
 .panel h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
 .panel p { color: var(--text-2); margin: 0 0 12px; font-size: 13px; }
-.step { display: flex; gap: 14px; margin-bottom: 20px; }
-.step-num {
+
+/* Status banner: the system verdict, the first thing the eye hits.
+   Quiet is the default aesthetic; the alert variant earns the red. */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin-bottom: 28px;
+}
+.status-banner.alert { border-left-color: var(--red); }
+.status-banner .verdict {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.status-banner .detail { color: var(--text-2); font-size: 13px; margin: 3px 0 0; }
+.status-banner .action { margin-left: auto; flex: none; }
+
+/* Decision bar: sits directly under the evidence it decides on and
+   states the consequence before the buttons. */
+.decision-bar {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin: 24px 0 8px;
+}
+.decision-bar h3 { margin: 0 0 4px; font-size: 14px; font-weight: 650; }
+.decision-bar > p { color: var(--text-2); font-size: 13px; margin: 0 0 14px; max-width: 72ch; }
+
+/* Guided flow: numbered steps with state. Done steps get the accent
+   numeral; the current step holds the action; upcoming steps are muted. */
+.guide { margin: 4px 0 24px; }
+.guide-step {
+  display: flex;
+  gap: 14px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.guide-step:last-child { border-bottom: none; }
+.guide-step:first-child { padding-top: 8px; }
+.guide-num {
   flex: none;
   width: 26px; height: 26px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; color: var(--text-2);
-  margin-top: 18px;
+  margin-top: 2px;
 }
-.step-body { flex: 1; min-width: 0; }
+.guide-step.done .guide-num { border-color: var(--accent); color: var(--accent); }
+.guide-step.todo { opacity: 0.55; }
+.guide-body { flex: 1; min-width: 0; }
+.guide-body h3 { margin: 0 0 4px; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+.guide-body > p { color: var(--text-2); font-size: 13px; margin: 0 0 12px; max-width: 72ch; }
+
+/* Breadcrumb above the page title. */
+.crumbs { color: var(--text-3); font-size: 13px; margin: 0 0 10px; }
+.crumbs a { color: inherit; }
+.crumbs .sep { margin: 0 6px; }
 
 /* Empty state: text and an action, no illustration. Solid border reads as
    a designed panel; dashed reads as a placeholder. */
