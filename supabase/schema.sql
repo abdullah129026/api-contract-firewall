@@ -119,3 +119,29 @@ create table gate_evaluations (
   evaluated_at timestamptz not null default now()
 );
 create index gate_evaluations_service_idx on gate_evaluations(service_id, evaluated_at desc);
+
+-- Landing page waitlist (was migration 0004). One row per email;
+-- duplicates are rejected by the unique constraint and the API answers
+-- "already on the list".
+create table waitlist (
+  id bigint generated always as identity primary key,
+  email text not null unique,
+  created_at timestamptz not null default now()
+);
+grant insert on public.waitlist to service_role;
+
+-- Ingest concurrency hardening (was migration 0005). Bursts of traffic
+-- produce many concurrent POSTs to /api/ingest; a read-modify-write
+-- counter bump loses increments when requests overlap, so the bump is a
+-- single atomic UPDATE behind an RPC the dashboard calls.
+create or replace function public.bump_endpoint_sample_count(p_endpoint_id uuid)
+returns public.endpoints
+language sql
+as $$
+  update public.endpoints
+    set sample_count = sample_count + 1,
+        last_seen_at = now()
+    where id = p_endpoint_id
+  returning endpoints.*;
+$$;
+grant execute on function public.bump_endpoint_sample_count(uuid) to service_role;

@@ -36,3 +36,8 @@ before, apply the files in `migrations/` in order instead (SQL editor,
 one file at a time):
 
 - `0002_violations.sql` — violations table for the detection engine.
+- `0003_gate_evaluations.sql` — one row per CI gate evaluation.
+- `0004_waitlist.sql` — landing page waitlist signups.
+- `0005_ingest_concurrency.sql` — atomic sample-counter RPC for concurrent
+  ingest bursts. Run this before (or any time after) the dashboard code that
+  calls it: the code falls back to the old counter until the function exists.
