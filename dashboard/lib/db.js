@@ -69,45 +69,56 @@ export function createDb({ url, serviceKey }) {
     },
 
     // Endpoints and learning
-    async getEndpoint(serviceId, method, pathTemplate) {
-      const rows = await req(
-        `endpoints?service_id=eq.${serviceId}` +
-          `&method=eq.${encodeURIComponent(method)}` +
-          `&path_template=eq.${encodeURIComponent(pathTemplate)}` +
-          `&select=id,service_id,method,path_template,state,sample_count,human_confirmed`
-      );
-      return rows[0] || null;
-    },
-    async createEndpoint({ serviceId, method, pathTemplate }) {
-      const rows = await req('endpoints', {
+    // Get the endpoint row, creating it if needed. One atomic upsert: a
+    // separate select-then-insert loses the race when a burst of samples
+    // hits a new endpoint and every loser gets a 409 (the sample is then
+    // dropped). On conflict only last_seen_at is touched; new rows take
+    // the table defaults (LEARNING, sample_count 0).
+    async getOrCreateEndpoint({ serviceId, method, pathTemplate }) {
+      const rows = await req('endpoints?on_conflict=service_id,method,path_template', {
         method: 'POST',
-        prefer: 'return=representation',
+        prefer: 'resolution=merge-duplicates,return=representation',
         body: {
           service_id: serviceId,
           method,
           path_template: pathTemplate,
-          state: 'LEARNING',
-          sample_count: 0,
+          last_seen_at: new Date().toISOString(),
         },
       });
       return rows[0];
     },
-    // Atomically bump the sample counter and refresh last_seen.
+    // Bump the sample counter and refresh last_seen, returning the row.
+    // The counter lives in a Postgres function (migration 0005) because a
+    // read-modify-write loses increments under concurrent ingest bursts.
     async bumpEndpointSampleCount(endpointId) {
-      // PostgREST has no increment operator; read-modify-write is fine at
-      // MVP ingest volumes (1-in-10 sampling, bounded per endpoint).
-      const current = (
-        await req(`endpoints?id=eq.${endpointId}&select=id,state,sample_count,human_confirmed`)
-      )[0];
-      const bumped = await req(`endpoints?id=eq.${endpointId}&select=id,state,sample_count,human_confirmed`, {
-        method: 'PATCH',
-        prefer: 'return=representation',
-        body: {
-          sample_count: current.sample_count + 1,
-          last_seen_at: new Date().toISOString(),
-        },
-      });
-      return bumped[0];
+      try {
+        const row = await req('rpc/bump_endpoint_sample_count', {
+          method: 'POST',
+          prefer: 'return=representation',
+          body: { p_endpoint_id: endpointId },
+        });
+        return Array.isArray(row) ? row[0] : row;
+      } catch (err) {
+        if (!/^supabase 404/.test(err.message)) throw err;
+        // Migration 0005 is a human step (Supabase SQL editor) and may not
+        // be applied yet. Fall back to read-modify-write until it lands;
+        // under concurrency this can undercount, but nothing is dropped.
+        const current = (
+          await req(`endpoints?id=eq.${endpointId}&select=id,state,sample_count,human_confirmed`)
+        )[0];
+        const bumped = await req(
+          `endpoints?id=eq.${endpointId}&select=id,state,sample_count,human_confirmed`,
+          {
+            method: 'PATCH',
+            prefer: 'return=representation',
+            body: {
+              sample_count: current.sample_count + 1,
+              last_seen_at: new Date().toISOString(),
+            },
+          }
+        );
+        return bumped[0];
+      }
     },
     async setEndpointEnforcing(endpointId) {
       const rows = await req(`endpoints?id=eq.${endpointId}&select=id,state,sample_count,human_confirmed`, {

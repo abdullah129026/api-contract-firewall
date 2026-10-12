@@ -57,14 +57,14 @@ export async function ingestSample(db, rawPayload) {
   const service = await db.getServiceByName(sample.service);
   if (!service) throw new ValidationError(`unknown service: ${sample.service}`);
 
-  let endpoint = await db.getEndpoint(service.id, sample.method, sample.path);
-  if (!endpoint) {
-    endpoint = await db.createEndpoint({
-      serviceId: service.id,
-      method: sample.method,
-      pathTemplate: sample.path,
-    });
-  }
+  // Atomic upsert: a select-then-insert loses the race when a burst of
+  // samples hits a new endpoint, and every loser gets a 409 (dropping the
+  // sample).
+  let endpoint = await db.getOrCreateEndpoint({
+    serviceId: service.id,
+    method: sample.method,
+    pathTemplate: sample.path,
+  });
 
   await db.insertSample({
     endpointId: endpoint.id,
@@ -83,15 +83,26 @@ export async function ingestSample(db, rawPayload) {
   if (justBecameEnforcing({ state: before }, after)) {
     // Learning complete: infer the baseline from the collected samples.
     // Bounded at 100 rows (LEARNING_SAMPLE_TARGET); cheap enough to run
-    // inline instead of waiting for the analyzer tick.
-    const bodies = await db.getSampleBodies(endpoint.id, LEARNING_SAMPLE_TARGET);
-    await db.insertSchemaVersion({
-      endpointId: endpoint.id,
-      version: 1,
-      schema: inferSchema(bodies),
-      isBaseline: true,
-      source: 'learning',
-    });
+    // inline instead of waiting for the analyzer tick. The baseline check
+    // plus the conflict-tolerant insert make promotion idempotent: under
+    // burst traffic two samples can both observe the 100th sample, and
+    // exactly one baseline row must land.
+    const existing = await db.getBaselineSchemaVersion(endpoint.id);
+    if (!existing) {
+      const bodies = await db.getSampleBodies(endpoint.id, LEARNING_SAMPLE_TARGET);
+      try {
+        await db.insertSchemaVersion({
+          endpointId: endpoint.id,
+          version: 1,
+          schema: inferSchema(bodies),
+          isBaseline: true,
+          source: 'learning',
+        });
+      } catch (err) {
+        if (!/^supabase 409/.test(err.message)) throw err;
+        // Lost the promotion race; the other sample's baseline stands.
+      }
+    }
     endpoint = await db.setEndpointEnforcing(endpoint.id);
   }
 
@@ -100,6 +111,17 @@ export async function ingestSample(db, rawPayload) {
   }
 
   return endpoint;
+}
+
+// Retries a db write once when a concurrent request won the same unique
+// row first (PostgREST answers 409). The retry then sees the winner's row.
+async function retryOnConflict(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (!/^supabase 409/.test(err.message)) throw err;
+    return fn();
+  }
 }
 
 // Compare a new sample against the enforced baseline and record violations.
@@ -118,27 +140,45 @@ async function detectDrift(db, endpoint, sample) {
 
   let isNew = false;
   for (const d of diffs) {
-    const res = await db.upsertViolation({
-      endpointId: endpoint.id,
-      severity: d.severity,
-      kind: d.kind,
-      fieldPath: d.path,
-      summary: d.summary,
-      detail: d.detail,
-    });
+    // Two samples can sight the same new diff concurrently; the open-row
+    // dedupe index 409s the loser, whose retry then bumps the winner's row.
+    const res = await retryOnConflict(() =>
+      db.upsertViolation({
+        endpointId: endpoint.id,
+        severity: d.severity,
+        kind: d.kind,
+        fieldPath: d.path,
+        summary: d.summary,
+        detail: d.detail,
+      })
+    );
     if (res.created) isNew = true;
   }
 
   if (isNew) {
     // First sighting of this diff: snapshot the drifted shape. One version
-    // per confirmed diff, never per sample (plan section 2.4).
-    const maxVersion = await db.getMaxSchemaVersion(endpoint.id);
-    await db.insertSchemaVersion({
-      endpointId: endpoint.id,
-      version: maxVersion + 1,
-      schema: observed,
-      isBaseline: false,
-      source: 'detected',
-    });
+    // per confirmed diff, never per sample (plan section 2.4). Two samples
+    // can compute the same next version concurrently; the loser recomputes
+    // after the winner's row lands instead of dropping the sample.
+    let version = (await db.getMaxSchemaVersion(endpoint.id)) + 1;
+    try {
+      await db.insertSchemaVersion({
+        endpointId: endpoint.id,
+        version,
+        schema: observed,
+        isBaseline: false,
+        source: 'detected',
+      });
+    } catch (err) {
+      if (!/^supabase 409/.test(err.message)) throw err;
+      version = (await db.getMaxSchemaVersion(endpoint.id)) + 1;
+      await db.insertSchemaVersion({
+        endpointId: endpoint.id,
+        version,
+        schema: observed,
+        isBaseline: false,
+        source: 'detected',
+      });
+    }
   }
 }
