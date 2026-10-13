@@ -198,8 +198,26 @@ export async function captureAndShip(request, response, env, { durationMs, proxy
   if (!res.ok) droppedSamples += 1;
 }
 
+// ---- CORS: browsers call the proxy cross-origin, so preflight OPTIONS must
+// be answered here instead of falling through to key validation (preflights
+// carry no x-api-key and would 401, which makes the browser block the real
+// request). Proxied responses pass the origin's CORS headers through untouched.
+const CORS_PREFLIGHT_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'x-api-key, content-type, authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+export function handlePreflight(request) {
+  if (request.method !== 'OPTIONS') return null;
+  return new Response(null, { status: 204, headers: CORS_PREFLIGHT_HEADERS });
+}
+
 export default {
   async fetch(request, env, ctx) {
+    const preflight = handlePreflight(request);
+    if (preflight) return preflight;
     const startedAt = Date.now();
     const apiKey = request.headers.get('x-api-key');
     const response = await handleRequest(request, env);
